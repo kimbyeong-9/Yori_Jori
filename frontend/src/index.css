@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+/* 가변 폰트 1개 파일(~2MB)만 로드한다 — 정적 웨이트 전체(9개 굵기 x woff/woff2)를
+   불러오면 9MB 이상이 되어 모바일에서 부담이 크다. */
+@import 'pretendard/dist/web/variable/pretendardvariable.css';
+@import '@fontsource/prompt/400.css';
+@import '@fontsource/prompt/500.css';
+@import '@fontsource/prompt/600.css';
+
+/* 디자인 토큰 (5단계 지시사항) */
+@theme {
+  --color-brand-background: #fafafa;
+  --color-brand-primary: #7a0000;
+  --color-brand-secondary: #99cffe;
+  --color-brand-accent: #fefa99;
+  --color-brand-text: #222222;
+
+  /* 한글은 Prompt에 글리프가 없어 Pretendard Variable로 자동 폴백된다(스크립트별 폰트 폴백). */
+  --font-sans: 'Prompt', 'Pretendard Variable', sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-background text-brand-text font-sans antialiased;
+  }
+}
