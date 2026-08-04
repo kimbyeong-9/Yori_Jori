@@ -90,10 +90,14 @@ cd backend
 # 의존성 설치 (Python 3.11)
 uv sync --python 3.11
 
-# 로컬 개발/테스트용 Postgres (예: Docker)
-docker run --rm -d --name yorijori-db \
-  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=yorijori \
-  -p 5432:5432 postgres:16
+# 로컬 개발/테스트용 Postgres (Docker) — 이름 고정 + 재시작 정책으로 한 번만 만들고
+# 이후에는 docker stop/start로만 관리한다 (--rm으로 띄우면 Docker/시스템 재시작 시
+# 컨테이너가 통째로 삭제되어 데이터가 날아간다).
+docker run -d --name yorijori-test-db --restart unless-stopped \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=yorijori_test \
+  -p 55432:5432 postgres:16
+# 이미 만들어 놨다면 (재부팅 등으로 꺼져 있을 때):
+docker start yorijori-test-db
 
 # .env 준비 (DATABASE_URL, GEMINI_API_KEY, GEMINI_MODEL 등)
 cp .env.example .env
