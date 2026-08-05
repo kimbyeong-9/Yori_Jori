@@ -1,25 +1,20 @@
 # 사용자가 직접 처리해야 할 항목
 
-- 작성일: 2026-08-05 (git 저장소/원격이 이미 설정돼 있음을 확인해 관련 항목 제거)
+- 작성일: 2026-08-06 (`GEMINI_API_KEY` 설정 완료 + 실제 키로 수동 검증 완료, 관련 항목 제거)
 - 용도: AI가 임의로 정하거나 임시로 둔 것 중, 사용자의 직접 조치·결정이 필요한 항목을
   모아둔다. 새 단계를 진행하면서 항목이 늘거나 해소되면 이 문서를 갱신한다(체크 표시 또는
   삭제).
 - 관련 문서: [decision-log.md](./decision-log.md)(제품/아키텍처 결정 전체 이력),
   [backlog.md](./backlog.md)(백로그별 선행 조건)
 
-## 반드시 사용자가 해야 하는 것
+## 완료된 항목 (참고)
 
-- [ ] **`GEMINI_API_KEY` 발급 및 설정**
-  지금 `.env`에 키가 없어 `/recommendations`는 항상 Gemini 호출이 실패하고 DB 폴백만
-  동작한다(에러는 안 나지만 실제 추천 품질은 검증 못 한 상태). Google AI Studio 등에서
-  키를 받아 `backend/.env`(git에 안 올라가는 실제 파일, `.env.example` 복사해서 생성)에
-  `GEMINI_API_KEY=...`를 넣는다. `GEMINI_MODEL`은 기본값(`gemini-2.0-flash`)이 있어
-  안 바꿔도 된다.
-
-- [ ] **실제 키로 한 번 수동 테스트 (권장)**
-  Gemini 관련 테스트는 전부 mock(`httpx.MockTransport`)으로만 검증했다. 실제 키를 넣은
-  뒤 서버를 띄우고 `/recommendations`를 한 번 직접 호출해, Gemini가 실제로 지정한 JSON
-  스키마대로 응답하는지 확인한다(mock으로 만든 가정이 실제 API 동작과 안 맞을 가능성).
+- [x] **`backend/.env` 직접 생성** 및 **`GEMINI_API_KEY` 발급/설정** — 완료.
+- [x] **실제 키로 수동 테스트** — `/recommendations`를 실제로 호출해 `source: "gemini"`로
+  레시피 4개가 정상 생성/캐시/영속화되는 것까지 확인(2026-08-06). 그 과정에서 찾은 문제
+  2건은 코드로 고쳤다(DL-009 참조): ① 기본 타임아웃 10초가 5개 레시피 구조화 출력엔 짧아
+  항상 조용히 DB로 폴백되던 문제 → 25초로 상향. ② 기본 모델 `gemini-2.0-flash`가 신규
+  키에서 무료 티어 할당량 0으로 막혀 있던 문제 → `gemini-flash-latest`로 기본값 변경.
 
 ## 제품 결정이 필요한 것 (Open Decision — decision-log.md)
 
@@ -36,12 +31,6 @@
   (`backend/app/services/recommendation_service.py`,
   `backend/app/services/recommendation_matching.py`). 지금은 레시피가 1건뿐이라 사실상
   항상 Gemini로 넘어가니 당장 문제는 아니지만, 레시피가 쌓이면 실사용 데이터로 조정 필요.
-
-## 환경 관련
-
-- [ ] **`backend/.env` 직접 생성**
-  `cp .env.example .env` 후 본인 로컬 DB/키로 채워야 실제로 서버가 뜬다(테스트 시에는
-  매번 임시 Docker 컨테이너 + 환경변수로만 했고, 실제 `.env` 파일은 만들지 않았다).
 
 ## 아직 시작 안 한 것 (참고)
 

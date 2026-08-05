@@ -124,7 +124,8 @@ yori_jori/
   싱글턴으로 관리한다(`get_http_client()`, 앱 종료 시 `close_http_client()` — `main.py`의
   `lifespan`에서 호출). 인증은 URL 쿼리가 아니라 `x-goog-api-key` 헤더로 보내 로그/URL에
   키가 남지 않게 한다.
-- 타임아웃 `GEMINI_TIMEOUT_SECONDS`(기본 10초), 실패 시 최대 1회 재시도(4xx는 재시도 안
+- 타임아웃 `GEMINI_TIMEOUT_SECONDS`(기본 25초 — 레시피 최대 5개 구조화 출력이 10초를
+  넘는 경우가 많아 상향, DL-009 참조), 실패 시 최대 1회 재시도(4xx는 재시도 안
   함). 최종 실패 시 `GeminiTimeoutError`/`GeminiRequestError`/`GeminiInvalidResponseError`
   중 하나를 던진다.
 - 모든 Gemini 응답은 `schemas/gemini.py`의 `GeminiRecipeItem`(Pydantic)으로 파싱/검증한
