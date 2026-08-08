@@ -9,6 +9,11 @@ class RecommendationCreate(SQLModel):
     fridge_item_ids: list[uuid.UUID]
 
 
+class RecipeSearchCreate(SQLModel):
+    session_id: uuid.UUID
+    ingredient_names: list[str]
+
+
 class RecommendedRecipe(SQLModel):
     id: uuid.UUID
     title: str
@@ -18,6 +23,10 @@ class RecommendedRecipe(SQLModel):
     missing_ingredients: list[str]
     safety_note: Optional[str] = None
     match_score: float
+    description: Optional[str] = None
+    servings: Optional[int] = None
+    difficulty: Optional[str] = None
+    tip: Optional[str] = None
 
 
 class RecommendationResponse(SQLModel):

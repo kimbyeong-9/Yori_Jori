@@ -1,6 +1,7 @@
 # 이벤트 택소노미 (Event Taxonomy)
 
-- 문서 버전: v0.1
+- 문서 버전: v0.2 — `recommend_request`에 자유 재료명 검색(BL-13)용 두 번째 metadata
+  형태 추가(이벤트 이름은 변경하지 않음)
 - 작성일: 2026-07-31
 - 규칙: 이 문서에 정의된 이벤트 이름은 임의로 변경하지 않는다 (CLAUDE.md 규칙 7).
   새 이벤트가 필요하면 이 문서를 먼저 갱신한 뒤 구현한다.
@@ -30,7 +31,7 @@
 | `ingredient_added` | 재료를 냉장고에 추가 완료 시 | `/ingredients/new` | `ingredient_id`, `freshness` | 재료 등록 |
 | `ingredient_selected` | 냉장고 목록에서 재료를 추천용으로 선택/해제 시 | `/fridge` | `ingredient_id`, `selected(boolean)` | 냉장고 재료 선택 |
 | `freshness_selected` | 재료의 신선도 상태를 선택/변경 시 | `/fridge`, `/ingredients/new` | `ingredient_id`, `freshness` | 냉장고 재료 선택 |
-| `recommend_request` | 선택된 재료로 추천을 요청할 시 | `/fridge` | `fridge_item_ids[]` | 추천 요청 |
+| `recommend_request` | 선택된 재료로 추천을 요청할 시 | `/fridge`, `/`(BL-13) | `fridge_item_ids[]` 또는 `ingredient_names[]`(자유 검색, DL-020) | 추천 요청 |
 | `recommendation_impression` | 추천 목록이 화면에 노출될 시 | `/recipes` | `request_id`, `recipe_ids[]` | 추천 목록 |
 | `recipe_click` | 추천 목록에서 레시피 카드를 클릭할 시 | `/recipes` | `recipe_id`, `position` | 추천 목록 |
 | `recipe_detail_view` | 레시피 상세 페이지 진입 시 | `/recipes/:id` | `recipe_id` | 레시피 상세 |

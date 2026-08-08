@@ -1,7 +1,7 @@
 # API 계약 (API Contract)
 
-- 문서 버전: v0.4 — BL-09에서 `/recipes/{id}/cook-sessions`, `/cook-sessions/{id}/complete` 추가
-- 작성일: 2026-08-03 (최초 작성 2026-07-31)
+- 문서 버전: v0.7 — §9 `POST /recipes/search`(자유 재료명 검색) 추가(DL-020, BL-13)
+- 작성일: 2026-08-07 (최초 작성 2026-07-31)
 - 상태: 세션·재료·냉장고·레시피 조회·저장·이벤트·추천·조리 시작/완료까지 구현 완료.
 - 구현 위치: `backend/app/api/*.py` (라우터), `backend/app/services/*.py`, `backend/app/repositories/*.py`
 - **API를 변경할 때는 이 문서와 프론트엔드 타입을 함께 수정한다 (CLAUDE.md 규칙 5).**
@@ -48,6 +48,9 @@
 - 응답 `200`: `FridgeItemRead[]` (최신 등록순) —
   `{ id, ingredient: IngredientRead, quantity, input_method, freshness_status, food_expires_at, action_due_at, created_at, updated_at }`
 - 오류: 세션 없음 → `404`
+- **자동 삭제(DL-016, 2026-08-06 확정)**: 조회 시점에 그 세션의 `action_due_at`이 지난
+  항목을 먼저 삭제하고 나머지만 응답에 담는다(lazy cleanup, 별도 스케줄러 없음). `expired`
+  상태처럼 `action_due_at`이 `null`인 항목은 이 자동 삭제 대상이 아니다.
 
 ### `POST /api/v1/fridge-items`
 - 요청: `{ session_id, ingredient_id, quantity?, input_method, freshness_status, food_expires_at? }`
@@ -77,10 +80,13 @@
 
 ### `GET /api/v1/recipes/{recipe_id}`
 - 응답 `200`: `RecipeRead` —
-  `{ id, title, source, source_url, instructions, cooking_time_min, is_llm_generated, created_at, ingredients }`
+  `{ id, title, source, source_url, instructions, cooking_time_min, is_llm_generated, created_at, description, servings, difficulty, tip, ingredients }`
   - `ingredients`: `{ ingredient: IngredientRead, quantity, is_optional }[]` (5단계 추가 —
     프론트 RecipeDetailPage가 "필요한 재료"/"보유·부족 재료"를 현재 세션의
     `GET /fridge-items` 결과와 대조해 계산할 수 있도록 재료 마스터 정보까지 함께 내려준다)
+  - `description`(한 줄 소개), `servings`(인분 수), `difficulty`(`"easy"|"normal"|"hard"`),
+    `tip`(조리 팁) — 전부 nullable(DL-017). Gemini가 생성하는 레시피는 항상 값을 채우고,
+    과거 시드/캐시로 만들어진 레시피는 `null`일 수 있다.
 - 오류: 없는 id → `404`
 
 조리 시작/완료는 §7 참조. `POST /recommendations`로 생성되는 Gemini 레시피도 이
@@ -150,7 +156,11 @@ BL-09. `cook_session_id`는 `recipe_start`/`recipe_complete` 이벤트의 `metad
         "matched_ingredients": ["string"],
         "missing_ingredients": ["string"],
         "safety_note": "string | null",
-        "match_score": 0.0
+        "match_score": 0.0,
+        "description": "string | null",
+        "servings": "int | null",
+        "difficulty": "easy | normal | hard | null",
+        "tip": "string | null"
       }
     ]
   }
@@ -169,10 +179,29 @@ BL-09. `cook_session_id`는 `recipe_start`/`recipe_complete` 이벤트의 `metad
   ([decision-log.md](./decision-log.md) DL-012, 튜닝 필요).
 - Gemini로 생성된 레시피는 `recipes.source="gemini"`, `is_llm_generated=true`로 저장되고
   이후 `GET /recipes/{id}`, 저장, 조리 시작 흐름에서 DB 레시피와 동일하게 취급된다.
+- 프롬프트 v2(DL-017)부터 Gemini가 `servings`/`difficulty`/`description`/`tip`까지 함께
+  생성한다. 버전이 바뀌어 `ingredients_hash`도 달라지므로, v1으로 캐시된 과거 `llm_cache`
+  응답(이 필드들이 없음)과 자연히 분리된다.
 - 오류: `fridge_item_ids` 중 존재하지 않는 게 있으면 `404` / 다른 세션 소유가 섞여 있으면
   `403`.
 
-## 9. 여전히 확정 필요한 항목
+## 9. 자유 재료명 검색 (`/recipes/search`, DL-020, BL-13)
+
+### `POST /api/v1/recipes/search`
+- 용도: 냉장고 등록 없이 홈페이지에서 재료명만 입력해 바로 레시피를 찾는다.
+- 요청: `{ session_id, ingredient_names: string[] }`
+- 응답 `200`: `POST /recommendations`와 완전히 동일한 `RecommendationResponse` 모양
+  (§8 참조). 신선도/임박 개념이 없어 근접임박 가중치는 항상 0이다.
+- 처리 순서는 §8과 같다(DB 매칭 → 부족하면 캐시/Gemini 폴백) — 다만: (1) 재료명 문자열을
+  마스터 `ingredients`에 최대한 매핑해 DB 매칭에 쓰고, 매핑 안 되는 이름은 DB 매칭에서만
+  제외한다(Gemini 프롬프트에는 원문 그대로 들어간다), (2) 프롬프트/캐시 네임스페이스가
+  `recommendations`(현재 `v2`)와 분리된 `search_v1`이라 두 흐름의 `llm_cache` 응답이 섞이지
+  않는다, (3) `fridge_item_id`가 없어 `recommendation_request_items` 스냅숏은 남기지 않고
+  `recommendation_requests`(source만)만 기록한다.
+- 오류: 이 엔드포인트는 소유권 검증이 필요한 리소스를 참조하지 않아 404/403 오류 경로가
+  없다.
+
+## 10. 여전히 확정 필요한 항목
 
 - `POST /api/v1/ingredients` 자유 등록 허용 여부 (DL-007)
 - 재료 마스터 데이터의 실제 출처 (DL-006)

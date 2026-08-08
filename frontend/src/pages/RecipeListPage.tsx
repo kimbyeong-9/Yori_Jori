@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Badge } from '../components/Badge'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
@@ -13,16 +13,23 @@ import { getApiErrorMessage } from '../types/common'
 
 export function RecipeListPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { sessionId } = useSession()
   const fridgeItemIdsParam = searchParams.get('fridge_item_ids') ?? ''
   const fridgeItemIds = fridgeItemIdsParam.split(',').filter(Boolean)
 
-  const [result, setResult] = useState<RecommendationResponse | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  // BL-13: 홈페이지의 자유 재료명 검색(POST /recipes/search) 결과는 fridge_item_ids
+  // 쿼리 파라미터 없이 router state로 곧장 넘어온다 — 있으면 그 결과를 그대로 쓴다.
+  const searchResult =
+    (location.state as { searchResult?: RecommendationResponse } | null)?.searchResult ?? null
+
+  const [result, setResult] = useState<RecommendationResponse | null>(searchResult)
+  const [isLoading, setIsLoading] = useState(!searchResult)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (searchResult) return
     const ids = fridgeItemIdsParam.split(',').filter(Boolean)
     if (!sessionId || ids.length === 0) {
       setIsLoading(false)
@@ -46,7 +53,7 @@ export function RecipeListPage() {
     return () => {
       cancelled = true
     }
-  }, [sessionId, fridgeItemIdsParam])
+  }, [sessionId, fridgeItemIdsParam, searchResult])
 
   useEffect(() => {
     if (!result) return
@@ -63,7 +70,7 @@ export function RecipeListPage() {
     navigate(`/recipes/${recipeId}`)
   }
 
-  if (fridgeItemIds.length === 0) {
+  if (!searchResult && fridgeItemIds.length === 0) {
     return (
       <EmptyState
         title="선택된 재료가 없어요"

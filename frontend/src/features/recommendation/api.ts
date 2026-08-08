@@ -11,3 +11,14 @@ export async function createRecommendation(
   })
   return data
 }
+
+export async function searchRecipesByNames(
+  sessionId: string,
+  ingredientNames: string[],
+): Promise<RecommendationResponse> {
+  const { data } = await apiClient.post<RecommendationResponse>('/recipes/search', {
+    session_id: sessionId,
+    ingredient_names: ingredientNames,
+  })
+  return data
+}

@@ -1,4 +1,5 @@
 import type { Ingredient } from '../ingredient/types'
+import type { RecipeDifficulty } from '../../types/common'
 
 // docs/api-contract.md §4 GET /recipes/{recipe_id} (5단계에서 ingredients 추가)
 export interface RecipeIngredient {
@@ -16,6 +17,10 @@ export interface RecipeDetail {
   cooking_time_min: number
   is_llm_generated: boolean
   created_at: string
+  description: string | null
+  servings: number | null
+  difficulty: RecipeDifficulty | null
+  tip: string | null
   ingredients: RecipeIngredient[]
 }
 

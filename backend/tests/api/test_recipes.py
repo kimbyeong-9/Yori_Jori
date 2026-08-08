@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from app.models.interaction_log import InteractionLog
+from app.models.recipe import Recipe
 from tests.api.helpers import (
     create_session_via_api,
     make_ingredient,
@@ -28,6 +29,41 @@ def test_get_recipe_returns_detail_with_ingredients(client, session):
     assert len(body["ingredients"]) == 1
     assert body["ingredients"][0]["ingredient"]["name"] == "상세조회재료"
     assert body["ingredients"][0]["is_optional"] is False
+
+
+def test_get_recipe_exposes_description_servings_difficulty_tip(client, session):
+    recipe = Recipe(
+        title="확장필드레시피",
+        source="manual",
+        instructions="1. 조리한다.",
+        cooking_time_min=10,
+        description="한 줄 소개",
+        servings=3,
+        difficulty="hard",
+        tip="팁입니다",
+    )
+    session.add(recipe)
+    session.flush()
+
+    resp = client.get(f"/api/v1/recipes/{recipe.id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["description"] == "한 줄 소개"
+    assert body["servings"] == 3
+    assert body["difficulty"] == "hard"
+    assert body["tip"] == "팁입니다"
+
+
+def test_get_recipe_allows_null_extended_fields(client, session):
+    recipe = make_recipe(session, title="기본필드레시피")
+
+    resp = client.get(f"/api/v1/recipes/{recipe.id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["description"] is None
+    assert body["servings"] is None
+    assert body["difficulty"] is None
+    assert body["tip"] is None
 
 
 def test_recent_recipes_ordered_by_last_view_desc_and_deduped(client, session):

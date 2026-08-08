@@ -7,6 +7,15 @@ export const FRESHNESS_LABELS: Record<FreshnessStatus, string> = {
   expired: '기한 지남',
 }
 
+// docs/api-contract.md, backend/app/models/enums.py의 RecipeDifficulty와 동일해야 한다.
+export type RecipeDifficulty = 'easy' | 'normal' | 'hard'
+
+export const DIFFICULTY_LABELS: Record<RecipeDifficulty, string> = {
+  easy: 'EASY',
+  normal: 'NORMAL',
+  hard: 'HARD',
+}
+
 // docs/api-contract.md §0 공통 에러 포맷.
 export interface ApiErrorResponse {
   error: {

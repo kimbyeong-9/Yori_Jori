@@ -28,4 +28,8 @@ class RecipeRead(SQLModel):
     cooking_time_min: int
     is_llm_generated: bool
     created_at: datetime
+    description: Optional[str]
+    servings: Optional[int]
+    difficulty: Optional[str]
+    tip: Optional[str]
     ingredients: list[RecipeIngredientRead]

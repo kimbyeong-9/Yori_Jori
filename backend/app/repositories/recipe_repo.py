@@ -59,11 +59,16 @@ def get_or_create_llm_recipe(
     cooking_time_min: int,
     prompt_version: str,
     recipe_ingredient_specs: list[RecipeIngredientSpecInput],
+    description: Optional[str] = None,
+    servings: Optional[int] = None,
+    difficulty: Optional[str] = None,
+    tip: Optional[str] = None,
 ) -> Recipe:
     """같은 title+source='gemini' 레시피가 이미 있으면 재사용하고, 없으면 만든다.
 
     캐시를 반복 히트해도(같은 해시 → 같은 파싱 결과) recipes/recipe_ingredients에
-    중복 행이 쌓이지 않게 하기 위함.
+    중복 행이 쌓이지 않게 하기 위함. description/servings/difficulty/tip은 최초 생성
+    시점 값을 그대로 유지한다(재사용 시 덮어쓰지 않음).
     """
     existing = get_by_title_and_source(db, title, "gemini")
     if existing is not None:
@@ -76,6 +81,10 @@ def get_or_create_llm_recipe(
         cooking_time_min=cooking_time_min,
         is_llm_generated=True,
         prompt_version=prompt_version,
+        description=description,
+        servings=servings,
+        difficulty=difficulty,
+        tip=tip,
     )
     db.add(recipe)
     db.flush()

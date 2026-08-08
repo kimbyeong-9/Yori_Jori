@@ -13,6 +13,8 @@
   --color-brand-secondary: #99cffe;
   --color-brand-accent: #fefa99;
   --color-brand-text: #222222;
+  /* BL-13 홈페이지 개편에서 추가 — 참고 디자인의 보조 텍스트 색. */
+  --color-brand-text-sub: #78716c;
 
   /* 한글은 Prompt에 글리프가 없어 Pretendard Variable로 자동 폴백된다(스크립트별 폰트 폴백). */
   --font-sans: 'Prompt', 'Pretendard Variable', sans-serif;

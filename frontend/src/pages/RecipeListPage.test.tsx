@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RecipeListPage } from './RecipeListPage'
 
 vi.mock('../context/SessionContext', () => ({
@@ -24,6 +24,10 @@ function renderWithQuery(query: string) {
 }
 
 describe('RecipeListPage', () => {
+  beforeEach(() => {
+    createRecommendation.mockClear()
+  })
+
   it('선택된 재료가 없으면 안내 상태를 보여준다', () => {
     renderWithQuery('')
     expect(screen.getByText('선택된 재료가 없어요')).toBeInTheDocument()
@@ -55,11 +59,56 @@ describe('RecipeListPage', () => {
           missing_ingredients: ['밥'],
           safety_note: null,
           match_score: 0.8,
+          description: null,
+          servings: null,
+          difficulty: null,
+          tip: null,
         },
       ],
     })
     renderWithQuery('fridge_item_ids=fi-1,fi-2')
     expect(await screen.findByText('계란볶음밥')).toBeInTheDocument()
     expect(screen.getByText(/AI 생성/)).toBeInTheDocument()
+  })
+
+  it('홈페이지 검색 결과(location.state)가 있으면 fridge_item_ids 없이도 바로 보여준다', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/recipes',
+            state: {
+              searchResult: {
+                recommendation_id: 'req-3',
+                source: 'db',
+                cached: false,
+                recipes: [
+                  {
+                    id: 'r-2',
+                    title: '양파계란국',
+                    cooking_time_min: 10,
+                    instructions: '...',
+                    matched_ingredients: ['양파', '계란'],
+                    missing_ingredients: [],
+                    safety_note: null,
+                    match_score: 1,
+                    description: null,
+                    servings: null,
+                    difficulty: null,
+                    tip: null,
+                  },
+                ],
+              },
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/recipes" element={<RecipeListPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('양파계란국')).toBeInTheDocument()
+    expect(createRecommendation).not.toHaveBeenCalled()
   })
 })

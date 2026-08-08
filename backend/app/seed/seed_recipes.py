@@ -39,6 +39,10 @@ def seed_test_recipe(session: Session) -> Recipe:
         ),
         cooking_time_min=15,
         is_llm_generated=False,
+        description="누구나 실패 없이 만드는 기본 계란볶음밥",
+        servings=2,
+        difficulty="easy",
+        tip="찬밥을 쓰면 밥알이 서로 붙지 않고 고소하게 볶아집니다.",
     )
     session.add(recipe)
     session.flush()

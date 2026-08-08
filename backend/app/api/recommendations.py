@@ -54,6 +54,10 @@ async def create_recommendation(
                 missing_ingredients=r.missing_ingredient_names,
                 safety_note=r.safety_note,
                 match_score=r.match_score,
+                description=r.description,
+                servings=r.servings,
+                difficulty=r.difficulty,
+                tip=r.tip,
             )
             for r in result.recipes
         ],

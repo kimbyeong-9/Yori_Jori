@@ -25,10 +25,14 @@ export function RecipeIngredientList({
           >
             <span>
               {item.ingredient.name}
-              {item.quantity && <span className="text-brand-text/50"> · {item.quantity}</span>}
               {item.is_optional && <span className="text-brand-text/40"> (선택)</span>}
             </span>
-            <Badge tone={owned ? 'secondary' : 'primary'}>{owned ? '보유' : '부족'}</Badge>
+            <span className="flex items-center gap-2">
+              {item.quantity && (
+                <span className="text-brand-text/60">{item.quantity}</span>
+              )}
+              <Badge tone={owned ? 'secondary' : 'primary'}>{owned ? '보유' : '부족'}</Badge>
+            </span>
           </li>
         )
       })}

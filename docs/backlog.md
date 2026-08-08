@@ -102,6 +102,50 @@
 - **완료 조건**: 각 진입점에서 해당 페이지로 정상 이동
 - **진행 상태(2026-08-02, 5단계)**: **완료**. `frontend/src/pages/HomePage.tsx` — 검색창,
   Top10 재료, 냉장고 요약(+선택해서 추천 조회), 최근 본 레시피, 재료 추가 진입점.
+- **2026-08-07 갱신**: BL-13에서 이 페이지가 자유 재료명 검색 중심으로 다시 만들어져
+  대체됐다(냉장고 요약/Top10 재료/재료 추가 진입점은 페이지에서 빠짐 — 기능은 `/fridge`에
+  그대로 있음).
+
+## BL-11. 냉장고 재료 기한 자동 삭제 + 임박 3시간 카운트다운
+- **목적**: 기한(action_due_at)이 지난 냉장고 재료를 자동으로 정리하고, 임박 3시간 전부터
+  재료별로 "N시간 남음"을 표시해 사용자가 소비기한을 놓치지 않게 한다.
+- **범위**: `GET /fridge-items` 조회 시점 lazy cleanup, `FridgeItemCard` 카운트다운 배지,
+  `useFridgeItems` 60초 폴링
+- **완료 조건**: 기한이 지난 재료가 다음 조회에서 응답에 빠지고 실제로 DB에서 삭제됨,
+  3시간 이하로 남은 재료는 "N시간 남음" 배지가 뜨고 시간이 줄어들면서 갱신됨
+- **진행 상태(2026-08-06)**: **완료**(DL-016). 백엔드
+  `backend/app/repositories/fridge_item_repo.py`(`delete_expired`),
+  `backend/app/services/fridge_service.py`. 프론트
+  `frontend/src/features/fridge/countdown.ts`,
+  `frontend/src/features/fridge/components/FridgeItemCard.tsx`,
+  `frontend/src/features/fridge/useFridgeItems.ts`.
+
+## BL-12. RecipeDetailPage UI 개편 + 인분/난이도/한줄소개/팁
+- **목적**: 목표 스크린샷 기준으로 레시피 상세 페이지를 다시 만들고, 이를 위해 필요한
+  인분 수·난이도·한 줄 소개·셰프의 팁 데이터를 `recipes`에 추가해 Gemini가 생성하도록 한다.
+- **범위**: `recipes` 스키마 확장(마이그레이션), Gemini 프롬프트 v2 + 구조화 출력 스키마
+  확장, `RecipeDetailPage`/`RecipeIngredientList` 재구성, 조리 순서 번호 파싱, 찜/링크
+  아이콘, AI 생성 안내문
+- **완료 조건**: `/recipes/:id`가 새 레이아웃으로 렌더링되고, Gemini로 새로 생성된
+  레시피는 인분/난이도/한줄소개/팁이 채워진 채 상세 페이지에 표시됨
+- **진행 상태(2026-08-06)**: **완료**(DL-017). 백엔드
+  `backend/app/models/recipe.py`, `backend/app/prompts/recipe_recommendation_v2.txt`,
+  `backend/app/services/recommendation_service.py`. 프론트
+  `frontend/src/pages/RecipeDetailPage.tsx`, `frontend/src/components/icons.tsx`,
+  `frontend/src/features/recipe/instructions.ts`,
+  `frontend/src/features/recipe/components/RecipeIngredientList.tsx`.
+
+## BL-13. HomePage 개편 — 자유 재료명 검색 + 새 NavBar/Footer
+- **목적**: 사용자가 준 참고 디자인대로 홈페이지를 자유 재료명 검색 중심 진입점으로
+  다시 만들고, 이를 위한 검색 전용 백엔드 경로와 새 전역 레이아웃(NavBar/Footer)을
+  갖춘다.
+- **범위**: `POST /api/v1/recipes/search`(§9), `recommendation_service.py` 리팩터링
+  (`_get_or_create_gemini_recipes` 공유 추출), `recipe_search_v1.txt` 프롬프트,
+  `compute_search_hash`, `frontend/src/layout/NavBar.tsx`/`Footer.tsx`,
+  `HomePage.tsx` 전체 재작성, `RecipeListPage.tsx`의 `location.state` 결과 수신 분기
+- **완료 조건**: 홈페이지에서 재료명을 자유 입력해 레시피 조회 → `/recipes`에서 결과 확인,
+  새 NavBar/Footer가 전체 앱에 적용됨
+- **진행 상태(2026-08-07)**: **완료**(DL-020).
 
 ## 백로그 외 (별도 트랙, 이번 목록에 포함하지 않음)
 - 배포/인프라, CI/CD 구성

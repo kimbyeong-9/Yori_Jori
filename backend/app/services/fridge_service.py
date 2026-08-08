@@ -32,6 +32,10 @@ def list_fridge_items(
     db: Session, session_id: uuid.UUID
 ) -> list[tuple[FridgeItem, Ingredient]]:
     _require_session(db, session_id)
+    # action_due_at이 지난 항목은 조회 시점에 자동으로 삭제한다(lazy cleanup).
+    # 별도 스케줄러/cron 없이, 이 세션이 냉장고 목록을 조회할 때마다 정리된다.
+    fridge_item_repo.delete_expired(db, session_id)
+    db.commit()
     items = fridge_item_repo.list_by_session(db, session_id)
     ingredients = {
         ing.id: ing for ing in ingredient_repo.get_many(db, {i.ingredient_id for i in items})

@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from tests.api.helpers import create_session_via_api, make_ingredient
+from app.repositories import fridge_item_repo
+from tests.api.helpers import create_session_via_api, make_fridge_item, make_ingredient
 
 
 def test_create_fridge_item_fresh_sets_action_due_at_48h(client, session):
@@ -168,6 +169,61 @@ def test_other_session_cannot_patch_fridge_item(client, session):
     )
     assert resp.status_code == 403
     assert resp.json()["error"]["code"] == "forbidden"
+
+
+def test_list_fridge_items_deletes_expired_action_due_at(client, session):
+    sess = create_session_via_api(client)
+    ingredient = make_ingredient(session, name="냉장고재료만료정리")
+    item = make_fridge_item(session, uuid.UUID(sess["session_id"]), ingredient)
+    item.action_due_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    session.add(item)
+    session.flush()
+
+    resp = client.get("/api/v1/fridge-items", params={"session_id": sess["session_id"]})
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+def test_list_fridge_items_keeps_not_yet_expired_item(client, session):
+    sess = create_session_via_api(client)
+    ingredient = make_ingredient(session, name="냉장고재료임박안됨")
+    item = make_fridge_item(session, uuid.UUID(sess["session_id"]), ingredient)
+    item.action_due_at = datetime.now(timezone.utc) + timedelta(hours=1)
+    session.add(item)
+    session.flush()
+
+    resp = client.get("/api/v1/fridge-items", params={"session_id": sess["session_id"]})
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_list_fridge_items_keeps_expired_status_without_action_due_at(client, session):
+    sess = create_session_via_api(client)
+    ingredient = make_ingredient(session, name="냉장고재료상태만료")
+    make_fridge_item(
+        session, uuid.UUID(sess["session_id"]), ingredient, freshness_status="expired"
+    )
+
+    resp = client.get("/api/v1/fridge-items", params={"session_id": sess["session_id"]})
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+
+def test_list_fridge_items_does_not_affect_other_session(client, session):
+    owner = create_session_via_api(client)
+    other = create_session_via_api(client)
+    ingredient = make_ingredient(session, name="냉장고재료타세션만료")
+    item = make_fridge_item(session, uuid.UUID(owner["session_id"]), ingredient)
+    item.action_due_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    session.add(item)
+    session.flush()
+
+    resp = client.get("/api/v1/fridge-items", params={"session_id": other["session_id"]})
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+    # other 세션 조회가 owner의 만료 항목까지 지우면 안 된다(세션별로 스코프됨).
+    assert fridge_item_repo.get(session, item.id) is not None
 
 
 def test_other_session_cannot_delete_fridge_item(client, session):

@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge } from '../../../components/Badge'
 import { Button } from '../../../components/Button'
 import { Card } from '../../../components/Card'
 import { FRESHNESS_LABELS, type FreshnessStatus } from '../../../types/common'
+import { getExpiryCountdownLabel } from '../countdown'
 import type { FridgeItem, UpdateFridgeItemInput } from '../types'
+
+const COUNTDOWN_TICK_MS = 30_000
 
 const FRESHNESS_TONE: Record<FreshnessStatus, 'secondary' | 'accent' | 'primary'> = {
   fresh: 'secondary',
@@ -32,6 +35,14 @@ export function FridgeItemCard({
   const [foodExpiresAt, setFoodExpiresAt] = useState(item.food_expires_at?.slice(0, 10) ?? '')
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), COUNTDOWN_TICK_MS)
+    return () => clearInterval(interval)
+  }, [])
+
+  const countdownLabel = getExpiryCountdownLabel(item.action_due_at, now)
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -72,9 +83,12 @@ export function FridgeItemCard({
             <p className="text-xs text-brand-text/50">{item.ingredient.category}</p>
           </div>
         </label>
-        <Badge tone={FRESHNESS_TONE[item.freshness_status]}>
-          {FRESHNESS_LABELS[item.freshness_status]}
-        </Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge tone={FRESHNESS_TONE[item.freshness_status]}>
+            {FRESHNESS_LABELS[item.freshness_status]}
+          </Badge>
+          {countdownLabel && <Badge tone="primary">{countdownLabel}</Badge>}
+        </div>
       </div>
 
       <div className="text-sm text-brand-text/70">

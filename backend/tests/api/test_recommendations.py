@@ -1,5 +1,6 @@
 import json
 import uuid
+from unittest.mock import patch
 
 import httpx
 from sqlmodel import select
@@ -9,6 +10,7 @@ from app.integrations.gemini_client import get_http_client
 from app.main import app
 from app.models.llm_cache import LLMCache
 from app.models.recipe import Recipe
+from app.repositories import llm_cache_repo
 from app.services.recommendation_hash import DEFAULT_LOCALE, compute_ingredients_hash
 from app.services.recommendation_service import PROMPT_VERSION
 from tests.api.helpers import (
@@ -94,10 +96,14 @@ def test_cache_hit_skips_gemini_call(client, session):
         {
             "title": "캐시된 레시피",
             "cooking_time_min": 10,
+            "servings": 1,
+            "difficulty": "easy",
+            "description": "간단한 캐시 레시피",
             "ingredients": ["캐시히트재료"],
             "matched_ingredients": ["캐시히트재료"],
             "missing_ingredients": [],
             "instructions": "캐시된 조리법",
+            "tip": "",
             "safety_note": "",
         }
     ]
@@ -142,10 +148,14 @@ def test_cache_miss_calls_gemini_and_persists_recipe(client, session):
         {
             "title": "새로 생성된 레시피",
             "cooking_time_min": 20,
+            "servings": 2,
+            "difficulty": "normal",
+            "description": "새로 만든 간단 레시피",
             "ingredients": ["캐시미스재료"],
             "matched_ingredients": ["캐시미스재료"],
             "missing_ingredients": [],
             "instructions": "새 조리법",
+            "tip": "",
             "safety_note": "",
         }
     ]
@@ -160,6 +170,9 @@ def test_cache_miss_calls_gemini_and_persists_recipe(client, session):
     assert body["source"] == "gemini"
     assert body["cached"] is False
     assert body["recipes"][0]["title"] == "새로 생성된 레시피"
+    assert body["recipes"][0]["servings"] == 2
+    assert body["recipes"][0]["difficulty"] == "normal"
+    assert body["recipes"][0]["description"] == "새로 만든 간단 레시피"
 
     ingredients_hash = _compute_hash([(fridge_item, ingredient, "fresh")])
     cache_row = session.exec(
@@ -173,6 +186,8 @@ def test_cache_miss_calls_gemini_and_persists_recipe(client, session):
     assert persisted_recipe is not None
     assert persisted_recipe.source == "gemini"
     assert persisted_recipe.is_llm_generated is True
+    assert persisted_recipe.servings == 2
+    assert persisted_recipe.difficulty == "normal"
 
 
 def test_gemini_timeout_falls_back_to_db_result(client, session):
@@ -275,3 +290,86 @@ def test_nonexistent_fridge_item_returns_404(client):
     )
     assert resp.status_code == 404
     assert resp.json()["error"]["code"] == "not_found"
+
+
+def test_concurrent_identical_requests_recover_from_cache_race(client, session):
+    """같은 재료/신선도로 거의 동시에 두 요청이 들어오면(예: React StrictMode의 effect
+    이중 호출) 둘 다 캐시 미스를 보고 Gemini를 호출해 같은 ingredients_hash로 llm_cache에
+    INSERT를 시도할 수 있다. 이 테스트는 그 경쟁 상황을 재현해 500 대신, 먼저 커밋된
+    캐시 결과로 정상 복구되는지 확인한다.
+    """
+    sess = create_session_via_api(client)
+    session_id = uuid.UUID(sess["session_id"])
+
+    ingredient = make_ingredient(session, name="경쟁상태재료")
+    fridge_item = make_fridge_item(session, session_id, ingredient, freshness_status="fresh")
+
+    ingredients_hash = _compute_hash([(fridge_item, ingredient, "fresh")])
+
+    # "다른 요청"이 이미 커밋해둔 것처럼 미리 캐시 행을 만들어둔다.
+    winning_recipes = [
+        {
+            "title": "이미 캐시된 레시피",
+            "cooking_time_min": 10,
+            "servings": 1,
+            "difficulty": "easy",
+            "description": "이미 캐시된 설명",
+            "ingredients": ["경쟁상태재료"],
+            "matched_ingredients": ["경쟁상태재료"],
+            "missing_ingredients": [],
+            "instructions": "이미 캐시된 조리법",
+            "tip": "",
+            "safety_note": "",
+        }
+    ]
+    session.add(
+        LLMCache(
+            ingredients_hash=ingredients_hash,
+            response_text=json.dumps(winning_recipes),
+            parsed_recipes=winning_recipes,
+            hit_count=0,
+            prompt_version=PROMPT_VERSION,
+            model_name=settings.gemini_model,
+        )
+    )
+    session.commit()
+
+    gemini_items = [
+        {
+            "title": "내가 새로 받은 레시피",
+            "cooking_time_min": 20,
+            "servings": 2,
+            "difficulty": "normal",
+            "description": "새로 받은 설명",
+            "ingredients": ["경쟁상태재료"],
+            "matched_ingredients": ["경쟁상태재료"],
+            "missing_ingredients": [],
+            "instructions": "새로 받은 조리법",
+            "tip": "",
+            "safety_note": "",
+        }
+    ]
+    _override_http_client(make_mock_gemini_client(_gemini_success_handler(gemini_items)))
+
+    original_get_by_hash = llm_cache_repo.get_by_hash
+    call_count = {"n": 0}
+
+    def flaky_get_by_hash(db, h):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            # 이 요청의 최초 캐시 조회 시점에는 아직 못 찾은 것처럼 경쟁 상황을 흉내낸다.
+            return None
+        return original_get_by_hash(db, h)
+
+    with patch.object(llm_cache_repo, "get_by_hash", side_effect=flaky_get_by_hash):
+        resp = client.post(
+            "/api/v1/recommendations",
+            json={"session_id": str(session_id), "fridge_item_ids": [str(fridge_item.id)]},
+        )
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["source"] == "gemini"
+    assert body["cached"] is True
+    # 경쟁에서 이긴(먼저 커밋된) 캐시 내용을 그대로 반환해야 한다.
+    assert body["recipes"][0]["title"] == "이미 캐시된 레시피"

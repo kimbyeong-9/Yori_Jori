@@ -175,6 +175,132 @@
   회귀 테스트: `backend/tests/test_session_service_race.py`.
 - **영향**: 없음(버그 수정, API 계약 변경 아님).
 
+## DL-016 | 2026-08-06 | Decided | 냉장고 재료 기한 자동 삭제 + 임박 3시간 카운트다운
+- **배경**: `action_due_at`(신선도 기준 자동 계산 기한)이 계산은 되지만 이를 쓰는
+  스케줄러/cron이 없고 UI에도 노출되지 않는다는 걸 사용자가 질문하며 확인, 이어서
+  "기한이 지나면 자동 삭제 + 임박 3시간 전부터 재료별 N시간 남음 표시"를 요청했다.
+- **결정**:
+  1. **기준 필드**: `action_due_at`(사용자가 입력하는 날짜 단위 `food_expires_at`이 아님).
+     모든 fresh/near_expiry 재료에 자동으로 채워지는 timestamp라 시간 단위 카운트다운에
+     맞고, "재료별로 계산"이라는 요청과 일치한다. `expired` 상태(action_due_at 없음)는
+     이번 자동삭제/카운트다운 대상에서 제외 — 이미 사용자가 수동으로 표시한 상태라
+     기존 수동 삭제로 충분하다고 판단.
+  2. **자동 삭제 방식**: APScheduler 등 새 스케줄러/인프라를 들이지 않고, `GET
+     /fridge-items` 조회 시점에 그 세션의 만료 항목을 먼저 지우는 lazy cleanup을 쓴다
+     (`backend/app/repositories/fridge_item_repo.py`의 `delete_expired`,
+     `backend/app/services/fridge_service.py`의 `list_fridge_items`에서 호출). 프론트가
+     60초 간격으로 목록을 다시 불러와(`useFridgeItems.ts`) 페이지를 열어둔 채로도 자연히
+     사라지게 한다. 아무도 접속하지 않으면 다음 접속까지 DB에 남는다는 한계가 있으나,
+     배포/상시 서버 인프라가 Non-Goal(architecture.md)인 이 프로젝트 규모에는 충분하다고
+     판단.
+  3. **카운트다운 표시**: 남은 시간이 3시간 이하일 때만 "N시간 남음"(올림, 최소 1)을
+     표시한다(`frontend/src/features/fridge/countdown.ts`의 `getExpiryCountdownLabel`).
+     `FridgeItemCard.tsx`가 30초마다 재계산해 기존 신선도 배지 옆에 강조 배지로 보여준다.
+- **영향**: `GET /fridge-items` 응답에서 만료 항목이 자동으로 빠짐(`docs/api-contract.md`
+  갱신). 새 백엔드 의존성 없음.
+
+## DL-017 | 2026-08-06 | Decided | 레시피 인분/난이도/한줄소개/팁 — 백엔드 확장 + Gemini 생성
+- **배경**: 레시피 상세 페이지(RecipeDetailPage) UI를 스크린샷 기준으로 다시 만들면서
+  인분 수·난이도·한 줄 소개·셰프의 팁이 필요했는데 `recipes` 테이블에 해당 데이터가 전혀
+  없었다. UI만 임시 고정값으로 채울지, 실제로 백엔드/Gemini까지 확장할지 사용자에게
+  물었고 **"백엔드까지 확장하고 LLM이 조사해서 작성 후 제공"** 하는 쪽으로 확정했다.
+- **결정**:
+  1. `recipes`에 `description`(한 줄 소개), `servings`(인분 수),
+     `difficulty`(`RecipeDifficulty`: easy/normal/hard, CHECK 제약), `tip`(조리 팁) 4개
+     컬럼을 전부 nullable로 추가(과거 시드/캐시 레시피와 호환). 구현:
+     `backend/app/models/enums.py`, `backend/app/models/recipe.py`, 마이그레이션
+     `d2814e88228e`.
+  2. Gemini 프롬프트를 v1→v2로 올려(`backend/app/prompts/recipe_recommendation_v2.txt`,
+     `PROMPT_VERSION="v2"`) 이 4개 필드를 함께 생성하도록 지시하고,
+     `GeminiRecipeItem`/`_RESPONSE_SCHEMA`에 `Literal["easy","normal","hard"]` 검증을
+     추가했다(CLAUDE.md 규칙 8). 프롬프트 버전이 바뀌면 `ingredients_hash`도 달라져 v1
+     캐시(이 필드 없음)와 자연히 분리되므로 별도 캐시 마이그레이션/무효화 로직은 필요
+     없었다.
+  3. "안전 유의사항" UI 박스는 추천 전용 `safety_note`(레시피별 구체적 주의사항, DB에
+     영속화되지 않음)를 새로 끌어오지 않고, `is_llm_generated`가 true일 때 항상 뜨는
+     고정 disclaimer 문구로 처리한다 — 스크린샷 문구가 특정 레시피 내용이 아니라 범용
+     안내문이라 별도 데이터 파이프라인이 필요 없다고 판단.
+- **영향**: `RecipeRead`/`RecommendedRecipe` 응답 필드 추가(`docs/api-contract.md` v0.6).
+  기존에 시드/캐시된 레시피는 이 4개 필드가 `null`일 수 있고, 프론트는 값이 없으면 해당
+  UI 요소를 표시하지 않는다.
+
+## DL-018 | 2026-08-06 | Decided(버그 수정) | 추천 요청 동시 중복 시 llm_cache 경쟁 처리
+- **배경**: 사용자가 레시피 서칭(추천 요청) 중 "데이터를 불러오지 못했습니다" 에러를
+  겪었다. 로그를 확인해 `POST /recommendations`가
+  `sqlalchemy.exc.IntegrityError: duplicate key value violates unique constraint
+  "ix_llm_cache_ingredients_hash"`로 500을 내는 것을 발견했다. `RecipeListPage.tsx`가
+  `useEffect`에서 `createRecommendation`을 가드 없이 호출해(React 19 StrictMode가 개발
+  모드에서 effect를 두 번 실행) 같은 재료/신선도 조합으로 거의 동시에 두 요청이 들어가면,
+  둘 다 `llm_cache` 캐시 미스를 보고 Gemini를 호출한 뒤 같은 `ingredients_hash`로 INSERT를
+  시도해 두 번째가 unique 제약을 위반한 것 — DL-014(세션 생성 경쟁)와 근본 원인이 동일한
+  패턴이다.
+- **결정 (2026-08-06)**: `recommendation_service._get_gemini_recipes`에서
+  `llm_cache_repo.create` 호출을 `IntegrityError`로 감싸 잡고, 잡히면 롤백 후 같은 해시로
+  다시 조회해 다른 요청이 이미 커밋한 캐시 행을 그대로 써서 응답한다(DL-014와 동일한
+  롤백+재조회 패턴, `cached=True`로 반환). 프론트의 `useEffect` 가드는 별도로 손대지
+  않았다 — 근본 원인(동시 중복 요청 자체)을 프론트에서 막기보다, 백엔드가 동시 요청에
+  안전하도록(idempotent) 만드는 쪽을 택했다(외부 API/DB 경쟁이 전체 요청 실패로 이어지지
+  않아야 한다는 CLAUDE.md 규칙 9와 동일한 방향).
+  구현: `backend/app/services/recommendation_service.py`.
+  회귀 테스트: `backend/tests/api/test_recommendations.py::test_concurrent_identical_requests_recover_from_cache_race`.
+- **영향**: 없음(버그 수정, API 계약 변경 아님).
+
+## DL-019 | 2026-08-06 | Decided(버그 수정) | 조리 순서 파싱이 줄바꿈 없는 Gemini 응답을 처리 못함
+- **배경**: 사용자가 실제 화면에서 "조리 순서"부터 목표 디자인과 완전히 다르게 보인다고
+  보고했다. 실제 문제의 레시피(`GET /recipes/07d9714d-...`)를 API로 직접 조회해
+  `instructions` 원문을 확인한 결과, `"1. 돼지고기와 양파를... 2. 냄비에... 3. 간장을...
+  4. 마지막에..."`처럼 **줄바꿈 없이 한 줄에 공백으로만 이어진** 문자열이었다.
+  `frontend/src/features/recipe/instructions.ts`의 `splitInstructionSteps`는 `\n` 기준으로
+  줄을 나눈 뒤에만 번호를 인식했기 때문에, 이 경우 전체 문자열을 "1단계" 하나로 취급하고
+  "2. 3. 4." 표시는 그 단계 텍스트 안에 그냥 문자로 남아 있었다(BL-12에서 시드 데이터의
+  `\n` 구분 형식만 보고 설계한 것이 원인 — 실제 Gemini 응답은 항상 그렇게 오지 않는다).
+- **결정 (2026-08-06)**: 줄 단위 분리 대신, 문자열 전체에서 "숫자+마침표+공백"
+  패턴(`/\d+\.\s+/g`) 자체를 단계 구분자로 찾아 그 사이 텍스트를 각 단계로 잘라낸다.
+  줄바꿈 유무와 무관하게 동작하며, `"1.5컵"`처럼 마침표 뒤 공백이 없는 소수점 표기는
+  구분자로 오인하지 않는다.
+  구현: `frontend/src/features/recipe/instructions.ts`.
+  회귀 테스트: `frontend/src/features/recipe/instructions.test.ts`(줄바꿈 없는 실제 응답
+  재현 케이스, 소수점 표기 오인 방지 케이스 추가).
+- **영향**: 없음(프론트 전용 파싱 버그 수정, API 계약 변경 아님).
+
+## DL-020 | 2026-08-07 | Decided | 홈페이지 개편(BL-13) — 자유 재료명 검색 아키텍처
+- **배경**: 사용자가 다른 프로젝트용으로 작성된 것처럼 보이는 홈페이지 참고 코드(JSX,
+  `@app/@pages/@features/@shared` 별칭, localStorage 전용 session_id, `/recipes/recommend`
+  등)를 주며 "이 구조/디자인대로 프론트를 만들고 백엔드도 맞춰 구축해달라"고 요청했다.
+  참고 코드의 세션/추천 설계가 기존 결정(DL-003 세션 등록 흐름, `POST /recommendations`의
+  fridge_item_id 기반 신선도 가중치)과 충돌해 확인 질문을 거쳤다.
+- **결정**:
+  1. **세션**: 참고 코드의 localStorage 전용 `session_id`(백엔드 등록 없음)로 바꾸지 않고
+     기존 `SessionContext`/`POST /sessions`(DL-003)를 그대로 쓴다 — 안 그러면
+     `fridge_items`/`saved_recipes` 등 FK 기반 기능이 깨진다.
+  2. **자유 재료명 검색**: 기존 `POST /recommendations`(fridge_item_ids 기반)에 끼워넣지
+     않고 `POST /api/v1/recipes/search`(§9)를 신설했다. 신선도 개념이 없는 이 흐름을 위해
+     `recommendation_service.py`의 캐시 조회/Gemini 호출/경쟁 상태 방어(DL-018) 로직을
+     `_get_or_create_gemini_recipes`로 뽑아 두 흐름이 공유하게 리팩터링했고, 프롬프트/캐시
+     네임스페이스는 `search_v1`으로 분리했다(`compute_search_hash`,
+     `backend/app/prompts/recipe_search_v1.txt`). 마스터에 없는 재료명은 DB 매칭에서만
+     제외하고 Gemini 프롬프트에는 그대로 들어간다(DL-007을 이 특정 용도로 확장 해석한 것 —
+     `POST /ingredients` 자유 등록 허용 여부 자체는 여전히 Open).
+  3. **최근 본 레시피**: 참고 코드의 localStorage 캐시 + 가짜 `PLACEHOLDER_RECIPES`는 쓰지
+     않는다. 이미 있는 백엔드 조회 이력 기반 `useRecentRecipes()`를 그대로 쓰고 카드 UI만
+     새 가로 슬라이더로 바꿨다 — 실제 데이터가 없을 때 가짜 레시피를 보여주지 않기 위함.
+  4. **폴더 구조**: `@app/@pages/@features/@shared` 별칭과 JSX 전환은 하지 않는다. 기존
+     TypeScript 구조(`src/pages`, `src/features`, `src/layout`) 안에 디자인/마크업만
+     반영했다.
+  5. **전역 레이아웃**: `NavBar`/`Footer`(`frontend/src/layout/`)를 새로 만들어 지금 바로
+     `AppLayout`을 교체했다. 기존 4개 nav 항목(홈/냉장고/재료추가/저장한 레시피) 중
+     "재료추가"/"저장한 레시피" 직접 링크는 새 디자인에 없어 nav에서 빠졌다(페이지 자체는
+     그대로 존재, 진입 경로만 좁혀짐). Footer의 `/support/*`, `/legal/*` 링크는 실제
+     페이지가 없다(이번 범위 밖, 라우터에 catch-all이 없어 빈 화면으로만 보임).
+  6. **이벤트**: "레시피 조회" 클릭은 기존 `recommend_request` 이벤트를 그대로 쓴다(이름
+     변경 금지, CLAUDE.md 규칙 7). `metadata`가 `fridge_item_ids[]`가 아니라
+     `ingredient_names[]`인 두 번째 형태를 `event-taxonomy.md`에 추가 문서화했다.
+- **영향**: `frontend/src/features/ingredient/components/TopIngredientList.tsx`는 이 개편으로
+  다른 곳에서도 안 쓰이게 되어 삭제했다. `RecipeListPage.tsx`는 `location.state.searchResult`
+  분기만 최소로 추가했고(그 페이지 자체의 디자인 개편은 다음 라운드), `RecommendedRecipe`
+  프론트 타입에 description/servings/difficulty/tip을 추가해 백엔드 스키마(DL-017)와
+  다시 맞췄다.
+
 ---
 
 ## 결정 요청 요약 (다음 대화에서 확인 필요)

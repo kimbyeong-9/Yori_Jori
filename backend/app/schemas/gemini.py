@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -10,8 +12,12 @@ class GeminiRecipeItem(BaseModel):
 
     title: str
     cooking_time_min: int
+    servings: int
+    difficulty: Literal["easy", "normal", "hard"]
+    description: str
     ingredients: list[str]
     matched_ingredients: list[str]
     missing_ingredients: list[str]
     instructions: str
+    tip: str
     safety_note: str

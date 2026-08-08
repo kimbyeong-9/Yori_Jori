@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlmodel import Session, select
@@ -40,4 +41,15 @@ def save(db: Session, fridge_item: FridgeItem) -> FridgeItem:
 
 def delete(db: Session, fridge_item: FridgeItem) -> None:
     db.delete(fridge_item)
+    db.flush()
+
+
+def delete_expired(db: Session, session_id: uuid.UUID) -> None:
+    stmt = select(FridgeItem).where(
+        FridgeItem.session_id == session_id,
+        FridgeItem.action_due_at.is_not(None),
+        FridgeItem.action_due_at <= datetime.now(timezone.utc),
+    )
+    for item in db.exec(stmt).all():
+        db.delete(item)
     db.flush()

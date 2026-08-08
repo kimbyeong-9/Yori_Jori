@@ -93,7 +93,7 @@ yori_jori/
 | `user_sessions` | `UserSession` | 세션(브라우저 방문 단위) | id, anonymous_user_id(FK), created_at, expires_at |
 | `ingredients` | `Ingredient` | 재료 마스터 | id, name, normalized_name(unique), category, unit, is_top |
 | `fridge_items` | `FridgeItem` | 세션이 등록한 냉장고 재료 | id, session_id(FK), ingredient_id(FK), quantity, input_method, freshness_status, food_expires_at, action_due_at, created_at, updated_at |
-| `recipes` | `Recipe` | 레시피(생성 또는 수동 등록) | id, title, source, source_url, instructions, cooking_time_min, is_llm_generated, prompt_version |
+| `recipes` | `Recipe` | 레시피(생성 또는 수동 등록) | id, title, source, source_url, instructions, cooking_time_min, is_llm_generated, prompt_version, description, servings, difficulty, tip(DL-017, 전부 nullable) |
 | `recipe_ingredients` | `RecipeIngredient` | 레시피-재료 관계 | recipe_id(FK), ingredient_id(FK), quantity, is_optional |
 | `recommendation_requests` | `RecommendationRequest` | 추천 요청 이력 | id, session_id(FK), ingredients_hash, source |
 | `recommendation_request_items` | `RecommendationRequestItem` | 요청 시점의 재료/신선도 스냅샷 | recommendation_request_id(FK), fridge_item_id(FK), freshness_status |
@@ -135,10 +135,17 @@ yori_jori/
   (CLAUDE.md 규칙 9). 다른 API(냉장고, 저장 등)는 Gemini와 무관하므로 영향 없음.
 - 검증에 통과한 레시피만 `recipes`/`recipe_ingredients`에 upsert하고 `llm_cache`에
   저장한다 — 잘못된 응답은 캐시에 남지 않는다.
-- 프롬프트는 코드에 직접 쓰지 않고 `app/prompts/recipe_recommendation_v1.txt`로 분리
-  (`PROMPT_VERSION` 상수와 파일명을 짝지어 관리, `recommendation_service.py`).
+- 프롬프트는 코드에 직접 쓰지 않고 `app/prompts/recipe_recommendation_v2.txt`로 분리
+  (`PROMPT_VERSION` 상수와 파일명을 짝지어 관리, `recommendation_service.py`). v1은 기록
+  보존용으로 남겨두고 v2부터 `servings`/`difficulty`/`description`/`tip`도 함께 생성한다
+  (DL-017). 버전이 바뀌면 `ingredients_hash`도 바뀌어 이전 버전 캐시와 자연히 분리된다.
 - 구체 타임아웃/재시도/폴백 정책은 [decision-log.md](./docs/decision-log.md) DL-009
   (Decided). DB "충분함" 판단 임계값은 DL-012(Open, 임시 상수).
+- **자유 재료명 검색(`POST /recipes/search`, DL-020, BL-13)**: 냉장고 재료(신선도 있음)
+  흐름과 별개로, 재료명 문자열만으로 레시피를 찾는 경로다. 캐시 조회/Gemini 호출/경쟁
+  상태 방어(DL-018)는 `_get_or_create_gemini_recipes`로 두 흐름이 공유하고, 프롬프트
+  (`app/prompts/recipe_search_v1.txt`)와 캐시 네임스페이스(`SEARCH_PROMPT_VERSION =
+  "search_v1"`, `compute_search_hash`)만 분리한다.
 
 ### 3.4 설정/환경
 - `Pydantic Settings`로 환경변수 로드 (DB URL, Gemini API Key 등)
@@ -150,7 +157,7 @@ yori_jori/
 src/
 ├── main.tsx, App.tsx(라우팅), index.css(Tailwind 테마 토큰 + 폰트)
 ├── context/SessionContext.tsx      # browser_uuid/session_id 관리 (feature 아님, 전역)
-├── layout/AppLayout.tsx            # 상단 nav + <Outlet/>
+├── layout/AppLayout.tsx            # NavBar + <Outlet/> + Footer (BL-13부터 NavBar/Footer 분리)
 ├── components/                     # Button, Card, Badge, Tabs, EmptyState, Spinner, ErrorState
 ├── lib/apiClient.ts                # axios 인스턴스 (baseURL '/api/v1')
 ├── types/common.ts                 # FreshnessStatus, 에러 메시지 추출 헬퍼

@@ -50,10 +50,14 @@ const sampleRecipe = {
   title: '계란볶음밥',
   source: 'manual',
   source_url: null,
-  instructions: '1. 볶는다.',
+  instructions: '1. 재료를 볶는다.\n2. 밥을 넣고 볶는다.',
   cooking_time_min: 15,
   is_llm_generated: false,
   created_at: '',
+  description: '누구나 실패 없이 만드는 기본 볶음밥',
+  servings: 2,
+  difficulty: 'easy' as const,
+  tip: '찬밥을 쓰면 더 고소해요.',
   ingredients: [
     {
       ingredient: { id: 'ing-1', name: '계란', category: '축산물', unit: '개', is_top: true },
@@ -87,6 +91,12 @@ describe('RecipeDetailPage', () => {
     expect(await screen.findByText('계란볶음밥')).toBeInTheDocument()
     expect(await screen.findAllByText('보유')).toHaveLength(1)
     expect(screen.getAllByText('부족')).toHaveLength(1)
+    expect(screen.getByText('누구나 실패 없이 만드는 기본 볶음밥')).toBeInTheDocument()
+    expect(screen.getByText('2인분')).toBeInTheDocument()
+    expect(screen.getByText('EASY')).toBeInTheDocument()
+    expect(screen.getByText('찬밥을 쓰면 더 고소해요.')).toBeInTheDocument()
+    expect(screen.getByText('재료를 볶는다.')).toBeInTheDocument()
+    expect(screen.getByText('밥을 넣고 볶는다.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => expect(saveRecipe).toHaveBeenCalledWith('session-1', 'r-1'))
@@ -101,5 +111,12 @@ describe('RecipeDetailPage', () => {
       expect(completeCookSession).toHaveBeenCalledWith('session-1', 'cook-1'),
     )
     expect(await screen.findByText(/조리를 완료했어요/)).toBeInTheDocument()
+  })
+
+  it('AI 생성 레시피면 안전 유의사항 안내문을 보여준다', async () => {
+    getRecipe.mockResolvedValue({ ...sampleRecipe, is_llm_generated: true })
+    renderPage()
+
+    expect(await screen.findByText(/본 레시피는 AI가 생성한 참고용 정보입니다/)).toBeInTheDocument()
   })
 })
