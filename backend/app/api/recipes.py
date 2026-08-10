@@ -1,13 +1,12 @@
 import uuid
 
 import httpx
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlmodel import Session
 
 from app.api.responses import NOT_FOUND
 from app.db.session import get_session
 from app.integrations.gemini_client import get_http_client
-from app.schemas.cook_session import CookSessionCreate, CookSessionStartResponse
 from app.schemas.ingredient import IngredientRead
 from app.schemas.recipe import RecipeIngredientRead, RecipeRead, RecipeSummary
 from app.schemas.recommendation import (
@@ -15,7 +14,7 @@ from app.schemas.recommendation import (
     RecommendationResponse,
     RecommendedRecipe,
 )
-from app.services import cook_session_service, recipe_service, recommendation_service
+from app.services import recipe_service, recommendation_service
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -115,25 +114,4 @@ def get_recipe(recipe_id: uuid.UUID, db: Session = Depends(get_session)) -> Reci
             )
             for recipe_ingredient, ingredient in ingredient_pairs
         ],
-    )
-
-
-@router.post(
-    "/{recipe_id}/cook-sessions",
-    response_model=CookSessionStartResponse,
-    status_code=status.HTTP_201_CREATED,
-    responses={**NOT_FOUND},
-    summary="조리 시작",
-    description="이 레시피로 조리를 시작한다. recipe_start 이벤트의 cook_session_id로 쓰인다.",
-)
-def start_cook_session(
-    recipe_id: uuid.UUID,
-    payload: CookSessionCreate,
-    db: Session = Depends(get_session),
-) -> CookSessionStartResponse:
-    cook_session = cook_session_service.start_cooking(
-        db, session_id=payload.session_id, recipe_id=recipe_id
-    )
-    return CookSessionStartResponse(
-        cook_session_id=cook_session.id, started_at=cook_session.started_at
     )

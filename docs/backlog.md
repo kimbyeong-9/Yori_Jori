@@ -87,14 +87,18 @@
 - **진행 상태(2026-08-02, 5단계)**: **완료**. `frontend/src/pages/SavedRecipesPage.tsx` —
   목록/저장일/상세 이동/저장 해제/빈 상태.
 
-## BL-09. 조리 시작/완료 흐름
+## BL-09. 조리 시작/완료 흐름 — 제거됨
 - **목적**: 상세 페이지에서 조리 시작 후 완료까지 처리
 - **범위**: `POST .../cook-sessions`, `PATCH .../complete`, 조리 모드 UI, `recipe_start`/`recipe_complete` 이벤트
 - **완료 조건**: 시작~완료 상태 전이가 DB에 기록되고 이벤트가 순서대로 발생
-- **진행 상태(2026-08-03)**: **완료**. `cook_sessions` 테이블 + `POST /recipes/{id}/
-  cook-sessions` + `PATCH /cook-sessions/{id}/complete`를 구현(DL-015, DL-013의 이벤트 전용
-  임시방편을 대체). `CookModeControls`가 이 API를 호출해 서버가 발급한 `cook_session_id`로
-  `recipe_start`/`recipe_complete` 이벤트를 기록한다.
+- **진행 상태(2026-08-03)**: 완료했었음(`cook_sessions` 테이블 + API + `CookModeControls`
+  UI, DL-015).
+- **진행 상태(2026-08-10)**: **제거**(DL-022). 화면에 타이머/경과 시간 같은 사용자 가치가
+  없고 시작~완료 시각만 서버에 기록하는 분석 전용 기능이라 필요 없다고 판단, 프론트
+  `CookModeControls`/API 함수, 백엔드 `cook-sessions` 라우트/서비스/스키마/레포지토리/모델,
+  `cook_sessions` 테이블(마이그레이션으로 drop)까지 전부 제거했다. `recipe_start`/
+  `recipe_complete` 이벤트 정의는 `event-taxonomy.md`에 기록만 남겨둔다(CLAUDE.md 규칙 7 —
+  이벤트명 자체는 삭제하지 않음, 현재는 어떤 코드도 발생시키지 않음).
 
 ## BL-10. HomePage
 - **목적**: 핵심 흐름 진입점 제공 (다른 백로그가 끝난 뒤 조립하는 성격이 강함)
@@ -146,6 +150,118 @@
 - **완료 조건**: 홈페이지에서 재료명을 자유 입력해 레시피 조회 → `/recipes`에서 결과 확인,
   새 NavBar/Footer가 전체 앱에 적용됨
 - **진행 상태(2026-08-07)**: **완료**(DL-020).
+
+## BL-14. FridgePage 개편 — 관리모드 토글 + 태그형 선택 UI
+- **목적**: 사용자가 준 참고 디자인(다른 프로젝트용으로 작성된 코드)의 UI/UX를 실제
+  아키텍처(서버 `fridge_items` 기반, 기존 이벤트/API)에 맞게 이식한다.
+- **범위**: `FridgePage.tsx` 전면 재작성(관리모드 토글, 카테고리 탭, 태그형 재료 버튼,
+  선택 칩, 하단 액션바), `AddFridgeItemModal.tsx`/`EditFridgeItemPanel.tsx` 신규,
+  `FridgeItemCard.tsx` 삭제(신규 UI로 대체)
+- **선행 조건**: 없음(BL-15 완료로 자유 재료 등록 API는 준비됨 — 모달에서 활용 가능)
+- **완료 조건**: 재료 검색/자유 등록으로 추가 → 관리모드에서 수정/삭제 → 선택 모드에서
+  선택 후 추천 요청까지 E2E로 확인, 기존 이벤트(`ingredient_selected`,
+  `freshness_selected`, `ingredient_added`, `recommend_request`) 그대로 발행
+- **진행 상태(2026-08-10)**: **완료**.
+  `frontend/src/pages/FridgePage.tsx`,
+  `frontend/src/features/fridge/components/AddFridgeItemModal.tsx`,
+  `frontend/src/features/fridge/components/EditFridgeItemPanel.tsx`,
+  `frontend/src/components/icons.tsx`(`FridgeIcon`/`PlusIcon`/`PencilIcon` 추가). 기존
+  `FridgeItemCard.tsx`는 태그형 UI로 대체되어 삭제. 실제 Gemini 키로 브라우저에서
+  검색 선택/자유 등록(예: "파프리카" → 채소로 자동 분류)/관리모드 수정·삭제/선택 후
+  추천 요청 이동까지 E2E로 확인(콘솔 에러 없음). 테스트:
+  `frontend/src/pages/FridgePage.test.tsx`(빈 상태, 선택→추천 이동, 관리모드 수정/삭제,
+  추가 모달 검색 선택 케이스).
+
+## BL-15. 자유 재료 등록 — `POST /api/v1/ingredients`
+- **목적**: 마스터에 없는 재료 이름도 등록할 수 있게 한다(DL-007 (a)로 확정).
+- **범위**: `POST /api/v1/ingredients`(이름만 입력받고 category/unit은 Gemini 검증으로
+  서버가 결정), `GeminiIngredientValidation` 스키마, `ingredient_validation_v1.txt`
+  프롬프트, `call_gemini`의 `response_schema` 파라미터 일반화, `ExternalServiceError`(503)
+- **완료 조건**: 신규 재료명 등록 시 Gemini 검증을 거쳐 생성/거부되고, 이미 있는 이름은
+  중복 생성 없이 기존 재료를 재사용, Gemini 장애 시 503으로 명확히 실패(다른 API에는
+  영향 없음)
+- **진행 상태(2026-08-10)**: **완료**(DL-007). 백엔드
+  `backend/app/api/ingredients.py`, `backend/app/services/ingredient_service.py`,
+  `backend/app/repositories/ingredient_repo.py`, `backend/app/schemas/gemini.py`,
+  `backend/app/schemas/ingredient.py`, `backend/app/core/errors.py`,
+  `backend/app/integrations/gemini_client.py`,
+  `backend/app/prompts/ingredient_validation_v1.txt`. 프론트
+  `frontend/src/features/ingredient/api.ts`(`createIngredient`, UI 연결은 BL-14).
+  테스트: `backend/tests/api/test_ingredients.py`(중복 재사용/정상 생성/비식용 거부/Gemini
+  장애 케이스).
+
+## BL-16. 세션 재료 불러오기 (미착수)
+- **목적**: 참고 디자인이 기대한 "최근 검색/조회한 재료를 냉장고로 가져오기" 기능.
+- **범위**: 아직 미정. `interaction_logs`(이벤트 로그) 기반으로 "세션의 최근 재료" 개념을
+  새로 정의하고 조회 API를 설계해야 한다 — 현재 백엔드에 대응하는 엔드포인트가 없다.
+- **선행 조건**: API 설계 논의 필요(이번 범위에서 다루지 않기로 결정, DL-007 결정 기록
+  참조). 착수 전 이 backlog 항목을 구체화해야 한다.
+- **진행 상태(2026-08-10)**: 미착수 — 등록만 해둠.
+
+## BL-17. RecipeListPage 개편 — 선택 식재료 칩 + 카드 그리드 리스타일
+- **목적**: 사용자가 준 참고 디자인(다른 프로젝트용으로 작성된 코드)의 UI를 실제 데이터
+  흐름(쿼리 `fridge_item_ids` → `POST /recommendations`, 또는 `location.state.searchResult`)
+  에 맞게 이식한다.
+- **범위**: `RecipeListPage.tsx` 재작성(선택 식재료 칩 행, 카드 그리드 리스타일, 정렬
+  아이콘은 시각적 자리만), `RecipeResultCard.tsx` 리스타일(보유/부족 재료 배지·난이도
+  배지는 유지), `HomePage.tsx`/`FridgePage.tsx`가 `location.state.ingredientNames`를
+  추가로 넘기도록 변경(칩 표시용, 레시피 조회 로직 자체는 변경 없음)
+- **완료 조건**: 홈 자유검색·냉장고 선택 두 경로 모두에서 선택 식재료 칩이 보이고,
+  카드 클릭 시 상세 페이지로 이동, 기존 이벤트(`recommendation_impression`,
+  `recipe_click`) 그대로 발행
+- **진행 상태(2026-08-10)**: **완료**. 실제 Gemini 키로 브라우저에서 홈 검색("계란",
+  "양파") → 선택 식재료 칩 2개 + AI 생성 레시피 카드 5개(보유/부족 재료·난이도 배지
+  포함) → 카드 클릭 시 상세 페이지 이동까지 확인(콘솔 에러 없음). 테스트:
+  `frontend/src/pages/RecipeListPage.test.tsx`(기존 4개 케이스 + 선택 식재료 칩 표시
+  케이스), `HomePage.test.tsx`/`FridgePage.test.tsx`의 navigate 호출 인자 갱신.
+
+## BL-18. RecipeDetailPage 개편 — 비주얼 리스타일
+- **목적**: 참고 디자인(다른 프로젝트용으로 작성된 코드, NavBar/Footer 중복 렌더링·
+  localStorage 저장·`recipe_unsave`(존재하지 않는 이벤트명)·조리 시작 기능 없음 등 실제
+  아키텍처와 맞지 않는 부분 다수)의 비주얼만 반영한다.
+- **범위**: `RecipeDetailPage.tsx` 재작성(메타 칩, sticky 재료 카드, 큰 번호 조리순서,
+  팁/안전 유의사항 카드), `RecipeIngredientList.tsx`/`CookModeControls.tsx` 리스타일,
+  `icons.tsx`에 `LightbulbIcon`/`AlertTriangleIcon`/`CheckIcon` 추가. 실제 저장 API
+  (`saved-recipes`), `recipe_save`/`recipe_detail_view`/`recipe_start`/`recipe_complete`
+  이벤트, 보유/부족 재료 매칭, `splitInstructionSteps`(DL-019), `is_llm_generated` 기반
+  안전 유의사항 노출 조건은 모두 그대로 유지.
+- **완료 조건**: 저장/저장해제, 링크 복사, 조리 시작→완료 흐름이 새 UI에서도 그대로
+  동작하고 기존 이벤트가 그대로 발행됨
+- **진행 상태(2026-08-10)**: **완료**. 실제 Gemini 키로 브라우저에서 저장 토글(하트
+  채워짐)→링크 복사(체크 아이콘 전환)→조리 시작→완료(다시 조리하기 노출)까지 전부
+  확인(콘솔 에러 없음). 기존 `RecipeDetailPage.test.tsx`(보유/부족·저장·조리 흐름,
+  AI 안전 유의사항 케이스)는 변경 없이 그대로 통과.
+
+## BL-19. SavedRecipesPage 개편 — 카드 그리드 + 클라이언트 페이지네이션
+- **목적**: 참고 디자인(다른 프로젝트용으로 작성된 코드, `localStorage`/존재하지 않는
+  `GET /logs/interactions/{sessionId}`·`recipe_unsave` 이벤트 등 실제 아키텍처와 맞지
+  않는 부분 다수)의 비주얼만 반영한다.
+- **범위**: `SavedRecipesPage.tsx` 재작성(헤더, 빈 상태, 카드 그리드, 6개씩 클라이언트
+  페이지네이션 — 7개 이상일 때만 노출), `SavedRecipeCard.tsx` 리스타일(우상단 하트
+  아이콘을 실제 저장 해제 버튼으로 사용). 실제 `listSavedRecipes`/`unsaveRecipe`
+  API(`GET`/`DELETE /saved-recipes`)는 그대로 유지, 이벤트 추가 발행 없음(기존과 동일).
+  페이지네이션은 이미 받아온 전체 목록을 프론트에서만 자르는 순수 UI 기능이라 백엔드
+  페이지네이션 Open 결정(api-contract.md 하단)과 무관.
+- **완료 조건**: 목록 표시, 카드 클릭 시 상세 이동, 하트 클릭으로 저장 해제, 7개 이상일
+  때 페이지 이동까지 동작
+- **진행 상태(2026-08-10)**: **완료**. 실제 Gemini 키로 브라우저에서 빈 상태 →
+  레시피 2개 저장 → 목록 확인 → 하트 클릭으로 해제까지 확인(콘솔 에러 없음). 테스트:
+  `frontend/src/pages/SavedRecipesPage.test.tsx`(기존 2개 케이스 문구 갱신 + 페이지네이션
+  케이스 추가).
+
+## BL-20. 약관/고객지원 정적 페이지 6종
+- **목적**: `Footer`에 이미 걸려 있던 `/legal/*`, `/support/*` 링크(DL-020에서 "실제 페이지가
+  없어 범위 밖"으로 남겨뒀던 부분)를 채운다. product-requirements.md의 명시적 제외 범위(§6)에
+  해당하지 않는 순수 추가 정적 콘텐츠라 다른 기능과 충돌 없음.
+- **범위**: `TermsPage`/`PrivacyPage`/`CookiePage`/`HelpPage`/`SafetyPage`/`ContactPage`
+  6개 페이지, 공용 `StaticPageLayout` 컴포넌트, `App.tsx` 라우트 6개 추가
+  (`/legal/terms`, `/legal/privacy`, `/legal/cookie`, `/support/help`, `/support/safety`,
+  `/support/contact`). 백엔드/이벤트/기존 페이지 로직 변경 없음.
+- **완료 조건**: Footer의 6개 링크가 모두 실제 페이지로 연결됨
+- **진행 상태(2026-08-10)**: **완료**. 실제 앱과 맞지 않는 레퍼런스 내용(존재하지 않는
+  음성 입력 기능 언급, 실제와 다른 신선도 라벨 표기)은 수정해서 반영. 테스트:
+  `frontend/src/pages/StaticPages.test.tsx`(6개 페이지 제목 렌더링 확인). CLAUDE.md 페이지
+  테이블에 6개 경로 추가.
 
 ## 백로그 외 (별도 트랙, 이번 목록에 포함하지 않음)
 - 배포/인프라, CI/CD 구성

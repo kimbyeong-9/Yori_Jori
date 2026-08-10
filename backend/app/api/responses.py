@@ -4,3 +4,6 @@ NOT_FOUND = {404: {"model": ErrorResponse, "description": "리소스를 찾을 �
 FORBIDDEN = {403: {"model": ErrorResponse, "description": "다른 세션의 리소스에 접근함"}}
 CONFLICT = {409: {"model": ErrorResponse, "description": "이미 존재함(중복)"}}
 INVALID_REQUEST = {400: {"model": ErrorResponse, "description": "잘못된 요청"}}
+EXTERNAL_SERVICE_UNAVAILABLE = {
+    503: {"model": ErrorResponse, "description": "외부 서비스(Gemini) 호출 실패"}
+}

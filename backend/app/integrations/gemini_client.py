@@ -4,39 +4,6 @@ import httpx
 
 from app.core.config import settings
 
-_RESPONSE_SCHEMA: dict[str, Any] = {
-    "type": "ARRAY",
-    "items": {
-        "type": "OBJECT",
-        "properties": {
-            "title": {"type": "STRING"},
-            "cooking_time_min": {"type": "INTEGER"},
-            "servings": {"type": "INTEGER"},
-            "difficulty": {"type": "STRING", "enum": ["easy", "normal", "hard"]},
-            "description": {"type": "STRING"},
-            "ingredients": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "matched_ingredients": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "missing_ingredients": {"type": "ARRAY", "items": {"type": "STRING"}},
-            "instructions": {"type": "STRING"},
-            "tip": {"type": "STRING"},
-            "safety_note": {"type": "STRING"},
-        },
-        "required": [
-            "title",
-            "cooking_time_min",
-            "servings",
-            "difficulty",
-            "description",
-            "ingredients",
-            "matched_ingredients",
-            "missing_ingredients",
-            "instructions",
-            "tip",
-            "safety_note",
-        ],
-    },
-}
-
 
 class GeminiTimeoutError(Exception):
     pass
@@ -82,10 +49,13 @@ async def call_gemini(
     prompt: str,
     model_name: str,
     api_key: str,
+    response_schema: dict[str, Any],
     timeout_seconds: float = 10.0,
 ) -> str:
     """Gemini 구조화 출력을 호출해 응답 텍스트(JSON 문자열)를 반환한다.
 
+    response_schema는 호출부가 기대하는 구조화 출력 형태를 정의한다(레시피 배열, 재료
+    검증 객체 등 용도별로 다르므로 이 계층에 고정하지 않는다).
     타임아웃/네트워크 오류/5xx는 최대 1회 재시도한다(총 2회 시도). 4xx는 재시도하지
     않는다. 어떤 예외 메시지에도 api_key를 포함하지 않는다.
     """
@@ -95,7 +65,7 @@ async def call_gemini(
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseMimeType": "application/json",
-            "responseSchema": _RESPONSE_SCHEMA,
+            "responseSchema": response_schema,
         },
     }
 

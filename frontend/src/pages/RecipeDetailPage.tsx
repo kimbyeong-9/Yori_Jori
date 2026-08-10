@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Badge } from '../components/Badge'
-import { Card } from '../components/Card'
 import { ErrorState } from '../components/ErrorState'
 import {
   ActivityIcon,
+  AlertTriangleIcon,
   ArrowLeftIcon,
+  CheckIcon,
   ClockIcon,
   HeartIcon,
+  LightbulbIcon,
   LinkIcon,
   TagIcon,
   UsersIcon,
@@ -17,18 +18,11 @@ import { useSession } from '../context/SessionContext'
 import { trackEvent } from '../features/analytics/track'
 import { listFridgeItems } from '../features/fridge/api'
 import { getRecipe } from '../features/recipe/api'
-import { CookModeControls } from '../features/recipe/components/CookModeControls'
 import { RecipeIngredientList } from '../features/recipe/components/RecipeIngredientList'
 import { splitInstructionSteps } from '../features/recipe/instructions'
 import type { RecipeDetail } from '../features/recipe/types'
 import { listSavedRecipes, saveRecipe, unsaveRecipe } from '../features/saved-recipes/api'
-import { DIFFICULTY_LABELS, getApiErrorMessage, type RecipeDifficulty } from '../types/common'
-
-const DIFFICULTY_TONE: Record<RecipeDifficulty, 'secondary' | 'neutral' | 'primary'> = {
-  easy: 'secondary',
-  normal: 'neutral',
-  hard: 'primary',
-}
+import { DIFFICULTY_LABELS, getApiErrorMessage } from '../types/common'
 
 export function RecipeDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -103,61 +97,72 @@ export function RecipeDetailPage() {
   const instructionSteps = splitInstructionSteps(recipe.instructions)
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-1 self-start text-sm text-brand-text/60 hover:text-brand-text"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        레시피 목록으로
-      </button>
+    <div className="mx-auto flex max-w-4xl flex-col gap-8">
+      <section className="flex flex-col gap-4 border-b border-brand-text/10 pb-8">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex w-fit items-center gap-1.5 text-sm font-medium text-brand-text-sub transition-colors hover:text-brand-primary"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          레시피 목록으로
+        </button>
 
-      <div>
-        <h1 className="text-2xl font-semibold text-brand-primary">{recipe.title}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-brand-text/70">
+        <h1 className="text-[22px] font-bold leading-tight tracking-tight text-brand-primary md:text-[28px]">
+          {recipe.title}
+        </h1>
+
+        <div className="flex flex-wrap items-center gap-2 md:gap-3">
           <button
             type="button"
             onClick={handleToggleSave}
             disabled={isSaveToggling}
             aria-label={isSaved ? '저장 해제' : '저장'}
-            className="text-brand-primary disabled:opacity-50"
+            className="flex-shrink-0 text-brand-primary transition-opacity disabled:opacity-50"
           >
-            <HeartIcon className="h-5 w-5" filled={isSaved} />
+            <HeartIcon className="h-[22px] w-[22px]" filled={isSaved} />
           </button>
           <button
             type="button"
             onClick={handleCopyLink}
             aria-label="레시피 링크 복사"
-            className="text-brand-text/50 hover:text-brand-text"
+            title={linkCopied ? '링크가 복사되었습니다!' : '링크 복사'}
+            className="flex-shrink-0 text-brand-text-sub transition-colors hover:text-brand-primary"
           >
-            <LinkIcon className="h-5 w-5" />
+            {linkCopied ? (
+              <CheckIcon className="h-[22px] w-[22px] text-green-500" />
+            ) : (
+              <LinkIcon className="h-[22px] w-[22px]" />
+            )}
           </button>
-          {linkCopied && <span className="text-xs text-brand-text/50">링크가 복사됐어요</span>}
           {recipe.servings && (
-            <span className="flex items-center gap-1">
-              <UsersIcon className="h-4 w-4" />
+            <span className="flex items-center gap-1.5 rounded-full bg-brand-text/5 px-3 py-1.5 text-xs font-medium text-brand-text">
+              <UsersIcon className="h-3.5 w-3.5 text-brand-primary" />
               {recipe.servings}인분
             </span>
           )}
-          <span className="flex items-center gap-1">
-            <ClockIcon className="h-4 w-4" />
+          <span className="flex items-center gap-1.5 rounded-full bg-brand-text/5 px-3 py-1.5 text-xs font-semibold text-brand-text">
+            <ClockIcon className="h-3.5 w-3.5 text-brand-primary" />
             {recipe.cooking_time_min}분
           </span>
           {recipe.difficulty && (
-            <Badge tone={DIFFICULTY_TONE[recipe.difficulty]}>
+            <span className="flex items-center gap-1.5 rounded-full bg-brand-accent px-3 py-1.5 text-xs font-semibold text-brand-text">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
               {DIFFICULTY_LABELS[recipe.difficulty]}
-            </Badge>
+            </span>
           )}
         </div>
-        {recipe.description && (
-          <p className="mt-3 text-sm text-brand-text/70">{recipe.description}</p>
-        )}
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <h2 className="mb-2 flex items-center gap-1.5 font-medium">
+        {recipe.description && (
+          <p className="text-sm leading-relaxed text-brand-text/80 md:text-[15px]">
+            {recipe.description}
+          </p>
+        )}
+      </section>
+
+      <section className="flex w-full flex-col items-start gap-8 lg:flex-row md:gap-12">
+        <aside className="flex w-full flex-shrink-0 flex-col gap-4 lg:sticky lg:top-24 lg:w-[240px]">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold text-brand-text">
             <TagIcon className="h-4 w-4 text-brand-primary" />
             필요한 식재료
           </h2>
@@ -165,42 +170,62 @@ export function RecipeDetailPage() {
             ingredients={recipe.ingredients}
             ownedIngredientIds={ownedIngredientIds}
           />
-        </Card>
+        </aside>
 
-        <Card>
-          <h2 className="mb-2 flex items-center gap-1.5 font-medium">
-            <ActivityIcon className="h-4 w-4 text-brand-primary" />
-            조리 순서
-          </h2>
-          <ol className="flex flex-col gap-3">
-            {instructionSteps.map((step, index) => (
-              <li key={index} className="flex gap-3">
-                <span className="text-xl font-bold text-brand-primary/70">{index + 1}</span>
-                <p className="pt-0.5 text-sm text-brand-text/80">{step}</p>
-              </li>
-            ))}
-          </ol>
-        </Card>
-      </div>
+        <div className="flex w-full flex-col gap-8 lg:flex-1">
+          <div className="flex flex-col gap-6">
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold text-brand-text md:text-[17px]">
+              <ActivityIcon className="h-4 w-4 text-brand-primary" />
+              조리 순서
+            </h2>
 
-      {recipe.tip && (
-        <div className="rounded-2xl bg-brand-accent/40 p-4 text-sm text-brand-text">
-          <p className="mb-1 font-medium">💡 셰프의 팁</p>
-          <p>{recipe.tip}</p>
+            <div className="flex flex-col gap-8">
+              {instructionSteps.length > 0 ? (
+                instructionSteps.map((step, index) => (
+                  <div key={index} className="relative flex flex-col pl-12">
+                    <span
+                      className="absolute left-0 top-0 select-none text-[40px] font-extrabold leading-none text-brand-accent"
+                      style={{ WebkitTextStroke: '1.5px var(--color-brand-primary)', opacity: 0.6 }}
+                    >
+                      {index + 1}
+                    </span>
+                    <p className="mt-1 text-sm leading-relaxed text-brand-text/80 md:text-[15px]">
+                      {step}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-brand-text-sub">조리 순서 정보가 없습니다.</p>
+              )}
+            </div>
+          </div>
+
+          {recipe.tip && (
+            <div className="mt-4 flex gap-3 rounded-2xl border border-brand-accent bg-brand-accent/40 p-5">
+              <LightbulbIcon className="mt-0.5 h-[18px] w-[18px] flex-shrink-0 text-[#63610F]" />
+              <div className="flex flex-col gap-1">
+                <h4 className="text-sm font-semibold text-[#63610F]">셰프의 팁</h4>
+                <p className="text-xs leading-relaxed text-[#63610F]/80 md:text-sm">{recipe.tip}</p>
+              </div>
+            </div>
+          )}
+
+          {recipe.is_llm_generated && (
+            <div className="flex gap-3 rounded-r-2xl border-l-4 border-brand-primary bg-brand-primary/5 p-4">
+              <AlertTriangleIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-brand-primary" />
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-brand-primary">
+                  안전 유의사항
+                </span>
+                <p className="text-xs leading-relaxed text-brand-primary/80 md:text-sm">
+                  본 레시피는 AI가 생성한 참고용 정보입니다. 요리 전 식재료 신선도와 알레르기
+                  유무를 반드시 확인해 주세요.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-
-      {recipe.is_llm_generated && (
-        <div className="rounded-2xl border border-brand-primary/20 bg-brand-primary/5 p-4 text-sm text-brand-text/80">
-          <p className="mb-1 font-medium text-brand-primary">⚠ 안전 유의사항</p>
-          <p>
-            본 레시피는 AI가 생성한 참고용 정보입니다. 요리 전 식재료 신선도와 알레르기 유무를
-            반드시 확인해 주세요.
-          </p>
-        </div>
-      )}
-
-      <CookModeControls recipeId={recipe.id} />
+      </section>
     </div>
   )
 }

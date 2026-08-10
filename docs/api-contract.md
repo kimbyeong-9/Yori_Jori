@@ -40,7 +40,16 @@
   `top`(`true`면 Top10 재료만)
 - 응답 `200`: `IngredientRead[]` — `{ id, name, category, unit, is_top }`
 
-마스터에 없는 재료의 자유 등록(`POST /ingredients`)은 이번 범위에 없다 (DL-007 Open).
+### `POST /api/v1/ingredients`
+- 요청: `{ name: string }` (`category`/`unit`은 서버가 정한다 — 사용자가 보내지 않음)
+- 동작: `name`을 정규화(`normalize_ingredient_name`)해 이미 같은 재료가 있으면 새로 만들지
+  않고 그 재료를 그대로 반환한다(`200`). 없으면 Gemini로 식용 여부/카테고리(DB에 이미 있는
+  카테고리 중에서 선택)/단위를 검증한 뒤 통과한 것만 생성한다(`201`).
+- 응답 `200`/`201`: `IngredientRead`
+- 오류: 식용 재료로 인식되지 않음 → `400 invalid_request` / Gemini 호출 자체가
+  실패(타임아웃·네트워크 오류·응답 파싱 실패) → `503 external_service_unavailable`(재료
+  마스터 정확성을 가용성보다 우선하는 fail-closed 정책, `docs/decision-log.md` DL-007 참조 —
+  이 엔드포인트는 다른 API와 달리 Gemini 실패를 DB 폴백으로 흡수하지 않는다)
 
 ## 3. Fridge Items (`/fridge-items`)
 
@@ -120,22 +129,12 @@
 - 응답 `202`(본문 없음)
 - 오류: 허용되지 않은 `event_type` → `400` / 세션·(있다면) 레시피 없음 → `404`
 
-## 7. Cook Sessions (`/recipes/{id}/cook-sessions`, `/cook-sessions`)
+## 7. Cook Sessions — 제거됨 (BL-09, DL-022)
 
-BL-09. `cook_session_id`는 `recipe_start`/`recipe_complete` 이벤트의 `metadata`에 실어
-보내는 값과 동일해야 한다.
-
-### `POST /api/v1/recipes/{recipe_id}/cook-sessions`
-- 용도: 조리 시작
-- 요청: `{ session_id }`
-- 응답 `201`: `{ cook_session_id, started_at }`
-- 오류: 세션/레시피 없음 → `404`
-
-### `PATCH /api/v1/cook-sessions/{cook_session_id}/complete?session_id=`
-- 용도: 조리 완료. 이미 완료된 세션에 다시 호출하면 기존 `completed_at`을 그대로
-  반환한다(idempotent, 덮어쓰지 않음).
-- 응답 `200`: `{ completed_at }`
-- 오류: 없는 id → `404` / 다른 세션 소유 → `403`
+`POST /recipes/{id}/cook-sessions`, `PATCH /cook-sessions/{id}/complete`는 2026-08-10에
+제거했다(사용자 판단: "요리 시작" 버튼이 화면상 타이머/안내 없이 서버에 시작~완료 시각만
+기록하는 순수 분석용 기록이라 필요 없다고 판단). `cook_sessions` 테이블도 마이그레이션으로
+drop했다. 자세한 배경은 [decision-log.md](./decision-log.md) DL-022 참조.
 
 ## 8. Recommendations (`/recommendations`)
 

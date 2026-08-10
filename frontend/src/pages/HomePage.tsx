@@ -51,7 +51,7 @@ export function HomePage() {
       void trackEvent(sessionId, 'recommend_request', {
         metadata: { ingredient_names: ingredients },
       })
-      navigate('/recipes', { state: { searchResult: result } })
+      navigate('/recipes', { state: { searchResult: result, ingredientNames: ingredients } })
     } catch {
       alert('해당 식재료로 레시피를 제작할 수 없습니다.')
     } finally {

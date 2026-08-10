@@ -25,3 +25,8 @@ class ConflictError(AppError):
 class ValidationError(AppError):
     status_code = 400
     code = "invalid_request"
+
+
+class ExternalServiceError(AppError):
+    status_code = 503
+    code = "external_service_unavailable"

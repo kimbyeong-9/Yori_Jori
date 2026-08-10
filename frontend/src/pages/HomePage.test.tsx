@@ -65,7 +65,9 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { name: /레시피 조회/ }))
 
     expect(searchRecipesByNames).toHaveBeenCalledWith('session-1', ['계란'])
-    expect(mockNavigate).toHaveBeenCalledWith('/recipes', { state: { searchResult } })
+    expect(mockNavigate).toHaveBeenCalledWith('/recipes', {
+      state: { searchResult, ingredientNames: ['계란'] },
+    })
     expect(trackEvent).toHaveBeenCalledWith('session-1', 'recommend_request', {
       metadata: { ingredient_names: ['계란'] },
     })

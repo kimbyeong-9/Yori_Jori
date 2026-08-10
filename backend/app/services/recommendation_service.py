@@ -48,6 +48,39 @@ MIN_DB_MATCH_RATIO = 0.5
 MIN_DB_RECIPE_COUNT = 3
 MAX_RECIPES_RETURNED = 5
 
+_RECIPE_RESPONSE_SCHEMA: dict = {
+    "type": "ARRAY",
+    "items": {
+        "type": "OBJECT",
+        "properties": {
+            "title": {"type": "STRING"},
+            "cooking_time_min": {"type": "INTEGER"},
+            "servings": {"type": "INTEGER"},
+            "difficulty": {"type": "STRING", "enum": ["easy", "normal", "hard"]},
+            "description": {"type": "STRING"},
+            "ingredients": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "matched_ingredients": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "missing_ingredients": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "instructions": {"type": "STRING"},
+            "tip": {"type": "STRING"},
+            "safety_note": {"type": "STRING"},
+        },
+        "required": [
+            "title",
+            "cooking_time_min",
+            "servings",
+            "difficulty",
+            "description",
+            "ingredients",
+            "matched_ingredients",
+            "missing_ingredients",
+            "instructions",
+            "tip",
+            "safety_note",
+        ],
+    },
+}
+
 PROMPT_VERSION = "v2"
 _PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "recipe_recommendation_v2.txt"
 
@@ -278,6 +311,7 @@ async def _get_or_create_gemini_recipes(
             prompt=prompt,
             model_name=settings.gemini_model,
             api_key=settings.gemini_api_key,
+            response_schema=_RECIPE_RESPONSE_SCHEMA,
             timeout_seconds=settings.gemini_timeout_seconds,
         )
     except (GeminiTimeoutError, GeminiRequestError, GeminiInvalidResponseError):

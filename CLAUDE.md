@@ -29,6 +29,12 @@ Session Context, Vitest, React Testing Library
 | `/recipes` | RecipeListPage |
 | `/recipes/:id` | RecipeDetailPage |
 | `/saved` | SavedRecipesPage |
+| `/legal/terms` | TermsPage |
+| `/legal/privacy` | PrivacyPage |
+| `/legal/cookie` | CookiePage |
+| `/support/help` | HelpPage |
+| `/support/safety` | SafetyPage |
+| `/support/contact` | ContactPage |
 
 ## 작업 전 필독 문서
 

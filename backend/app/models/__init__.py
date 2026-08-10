@@ -1,5 +1,4 @@
 from app.models.anonymous_user import AnonymousUser
-from app.models.cook_session import CookSession
 from app.models.fridge_item import FridgeItem
 from app.models.ingredient import Ingredient
 from app.models.interaction_log import InteractionLog
@@ -14,7 +13,6 @@ from app.models.user_session import UserSession
 __all__ = [
     "AnonymousUser",
     "UserSession",
-    "CookSession",
     "Ingredient",
     "FridgeItem",
     "Recipe",

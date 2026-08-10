@@ -22,6 +22,22 @@ def get_by_normalized_name(db: Session, normalized_name: str) -> Optional[Ingred
     return db.exec(stmt).first()
 
 
+def list_categories(db: Session) -> list[str]:
+    stmt = select(Ingredient.category).distinct().order_by(Ingredient.category)
+    return list(db.exec(stmt).all())
+
+
+def create(
+    db: Session, *, name: str, normalized_name: str, category: str, unit: str
+) -> Ingredient:
+    ingredient = Ingredient(
+        name=name, normalized_name=normalized_name, category=category, unit=unit
+    )
+    db.add(ingredient)
+    db.flush()
+    return ingredient
+
+
 def list_ingredients(
     db: Session,
     query: Optional[str] = None,

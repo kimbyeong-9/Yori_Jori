@@ -1,6 +1,18 @@
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel
+
+
+class GeminiIngredientValidation(BaseModel):
+    """재료 자유 등록(POST /api/v1/ingredients) 검증용 스키마 (CLAUDE.md 규칙 8, DL-007).
+
+    is_edible이 false거나 응답이 이 스키마를 통과하지 못하면 등록을 거부한다.
+    """
+
+    is_edible: bool
+    category: str
+    unit: str
+    reason: Optional[str] = None
 
 
 class GeminiRecipeItem(BaseModel):

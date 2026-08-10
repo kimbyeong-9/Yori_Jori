@@ -1,6 +1,5 @@
-import { Link } from 'react-router-dom'
-import { Button } from '../../../components/Button'
-import { Card } from '../../../components/Card'
+import { useNavigate } from 'react-router-dom'
+import { ClockIcon, HeartIcon } from '../../../components/icons'
 import type { SavedRecipe } from '../types'
 
 interface SavedRecipeCardProps {
@@ -10,18 +9,44 @@ interface SavedRecipeCardProps {
 }
 
 export function SavedRecipeCard({ savedRecipe, onUnsave, isUnsaving }: SavedRecipeCardProps) {
+  const navigate = useNavigate()
+
   return (
-    <Card className="flex items-center justify-between gap-3">
-      <Link to={`/recipes/${savedRecipe.recipe.id}`} className="flex-1">
-        <p className="font-medium">{savedRecipe.recipe.title}</p>
-        <p className="text-xs text-brand-text/50">
-          저장일 {new Date(savedRecipe.created_at).toLocaleDateString('ko-KR')} ·{' '}
+    <div
+      onClick={() => navigate(`/recipes/${savedRecipe.recipe.id}`)}
+      className="relative flex cursor-pointer flex-col rounded-2xl border border-brand-text/10 bg-white p-4 shadow-sm transition-shadow hover:shadow-md md:p-5"
+    >
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation()
+          onUnsave()
+        }}
+        disabled={isUnsaving}
+        aria-label="저장 해제"
+        className="absolute right-4 top-4 text-brand-primary transition-opacity disabled:opacity-40"
+      >
+        <HeartIcon className="h-[18px] w-[18px]" filled />
+      </button>
+
+      <h3 className="mb-3 min-h-[2.5rem] pr-7 text-[14px] font-semibold leading-snug text-brand-text line-clamp-2 md:text-[15px]">
+        {savedRecipe.recipe.title}
+      </h3>
+
+      <div className="mt-auto flex items-center justify-between border-t border-brand-text/10 pt-3">
+        <span className="text-xs text-brand-text-sub">
+          {new Date(savedRecipe.created_at).toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}{' '}
+          저장됨
+        </span>
+        <span className="flex items-center gap-1 text-xs text-brand-text-sub">
+          <ClockIcon className="h-3 w-3" />
           {savedRecipe.recipe.cooking_time_min}분
-        </p>
-      </Link>
-      <Button variant="ghost" onClick={onUnsave} disabled={isUnsaving}>
-        {isUnsaving ? '해제 중...' : '저장 해제'}
-      </Button>
-    </Card>
+        </span>
+      </div>
+    </div>
   )
 }

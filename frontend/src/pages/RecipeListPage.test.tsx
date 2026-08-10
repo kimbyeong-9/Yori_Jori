@@ -41,7 +41,7 @@ describe('RecipeListPage', () => {
       recipes: [],
     })
     renderWithQuery('fridge_item_ids=fi-1')
-    expect(await screen.findByText('추천 가능한 레시피가 없어요')).toBeInTheDocument()
+    expect(await screen.findByText('해당 식재료로 레시피를 제작할 수 없습니다.')).toBeInTheDocument()
   })
 
   it('추천 결과를 목록으로 보여주고 출처를 표시한다', async () => {
@@ -110,5 +110,32 @@ describe('RecipeListPage', () => {
     )
     expect(await screen.findByText('양파계란국')).toBeInTheDocument()
     expect(createRecommendation).not.toHaveBeenCalled()
+  })
+
+  it('location.state의 ingredientNames가 있으면 선택된 식재료 칩으로 보여준다', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/recipes',
+            state: {
+              ingredientNames: ['양파', '계란'],
+              searchResult: {
+                recommendation_id: 'req-4',
+                source: 'db',
+                cached: false,
+                recipes: [],
+              },
+            },
+          },
+        ]}
+      >
+        <Routes>
+          <Route path="/recipes" element={<RecipeListPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('양파')).toBeInTheDocument()
+    expect(screen.getByText('계란')).toBeInTheDocument()
   })
 })

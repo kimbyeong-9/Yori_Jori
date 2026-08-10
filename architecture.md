@@ -100,7 +100,6 @@ yori_jori/
 | `saved_recipes` | `SavedRecipe` | 저장된 레시피 | id, session_id(FK), recipe_id(FK), created_at — `(session_id, recipe_id)` unique |
 | `interaction_logs` | `InteractionLog` | 이벤트 로그(자체 저장) | id, session_id(FK), recipe_id(nullable FK), event_type, metadata(JSONB), created_at |
 | `llm_cache` | `LLMCache` | Gemini 응답 캐시 | id, ingredients_hash(unique), response_text, parsed_recipes(JSONB), hit_count, prompt_version, model_name |
-| `cook_sessions` | `CookSession` | 조리 시작~완료 이력(BL-09, DL-015) | id, session_id(FK), recipe_id(FK), started_at, completed_at(nullable) |
 
 - `freshness_status`는 `fresh` / `near_expiry` / `expired` 세 값(CHECK 제약)이며,
   `fridge_items.action_due_at`(서비스 행동 유도 기한, `food_expires_at`=실제 소비기한과는
@@ -146,6 +145,14 @@ yori_jori/
   상태 방어(DL-018)는 `_get_or_create_gemini_recipes`로 두 흐름이 공유하고, 프롬프트
   (`app/prompts/recipe_search_v1.txt`)와 캐시 네임스페이스(`SEARCH_PROMPT_VERSION =
   "search_v1"`, `compute_search_hash`)만 분리한다.
+- **`call_gemini`의 구조화 출력 스키마는 호출부가 넘긴다(DL-007, BL-15)**: 원래
+  `gemini_client.py`가 레시피 배열 응답 스키마를 모듈 내부에 고정해뒀는데, 재료 자유
+  등록(`POST /ingredients`)의 단일 객체 검증 응답(`GeminiIngredientValidation`)에는 다른
+  스키마가 필요해 `response_schema` 파라미터로 일반화했다. 레시피 스키마는
+  `recommendation_service._RECIPE_RESPONSE_SCHEMA`로, 재료 검증 스키마는
+  `ingredient_service._INGREDIENT_RESPONSE_SCHEMA`로 각 호출부에 있다. 재료 검증은
+  레시피 추천과 달리 실패 시 DB 폴백이 없다 — Gemini 호출 자체가 실패하면
+  `ExternalServiceError`(503)로 명확히 실패한다(재료 마스터 정확성을 가용성보다 우선).
 
 ### 3.4 설정/환경
 - `Pydantic Settings`로 환경변수 로드 (DB URL, Gemini API Key 등)
@@ -187,10 +194,10 @@ src/
 - **분석 이벤트**: `features/analytics/track.ts`가 `docs/event-taxonomy.md`의 11개 이벤트
   이름을 상수화(`eventTypes.ts`)해 `POST /api/v1/events`로 보낸다. 전송 실패는 조용히
   무시해 사용자 흐름을 막지 않는다.
-- **조리 시작/완료**: 백엔드에 `cook-sessions` 리소스가 없어(BL-09 미착수),
-  `cook_session_id`는 `RecipeDetailPage`가 `crypto.randomUUID()`로 만들어
-  `recipe_start`/`recipe_complete` 이벤트의 `metadata`에만 실어 보낸다(기존
-  `POST /events` 재사용, 새 백엔드 엔드포인트 없음).
+- **조리 시작/완료**: BL-09로 한 차례 구현했다가(DL-015) 2026-08-10에 기능 전체를
+  제거했다(DL-022) — 화면에 타이머 등 사용자 가치가 없는 순수 분석 기록이라 불필요하다고
+  판단. `recipe_start`/`recipe_complete` 이벤트 정의는 `event-taxonomy.md`에 남아있지만
+  현재 이를 발생시키는 코드는 없다.
 - **디자인 토큰**: `index.css`의 `@theme`에 색상(`brand-background/primary/secondary/
   accent/text`)만 커스텀 정의했다 — spacing(4,8,12,16,24,32,48)과 radius(8,12,16)는
   Tailwind 기본 스케일과 이미 일치해 그대로 사용한다. 폰트는 `font-family: 'Prompt',
@@ -210,5 +217,5 @@ src/
 
 - 배포/인프라(호스팅, CI/CD) 구성 — 별도 백로그로 다룸
 - 성능/부하 테스트
-- `POST /api/v1/ingredients`(재료 자유 등록), `cook-sessions`(조리 시작/완료 전용
-  리소스) — 각각 DL-007 Open, BL-09 미착수로 남아있다.
+- `cook-sessions`(조리 시작/완료 전용 리소스) — BL-09로 구현했다가 2026-08-10 제거함(DL-022).
+- 세션의 최근 검색/조회 재료 이력 조회(BL-16) — API 미설계, 등록만 해둔 상태.

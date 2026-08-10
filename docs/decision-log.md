@@ -63,10 +63,42 @@
   코드 내 리스트(pandas DataFrame)로 임시 시드했다. 실제 소스(엑셀 파일 등)가 정해지면
   `pandas.read_excel(...)`로 교체하도록 경계를 분리해뒀다 — 이 결정 자체는 여전히 Open.
 
-## DL-007 | 2026-07-31 | Open | 마스터에 없는 재료의 사용자 자유 등록 허용 여부
+## DL-007 | 2026-07-31 | Decided (2026-08-10) | 마스터에 없는 재료의 사용자 자유 등록 허용 여부
 - **배경**: IngredientAddPage에서 검색 결과가 없을 때의 동작이 미정.
 - **후보안**: (a) 자유 텍스트 등록 허용, (b) 마스터 목록 내에서만 선택 가능
-- **차단 대상**: `POST /api/v1/ingredients` 구현 여부
+- **결정 (2026-08-10)**: (a) 자유 텍스트 등록을 허용한다. 사용자가 다른 프로젝트용으로
+  작성된 것처럼 보이는 FridgePage 참고 코드(로컬스토리지 냉장고 상태, `POST
+  /ingredients`로 이름+카테고리 자유 생성, "식용 식재료로 인식되지 않습니다" 422 검증,
+  `GET /sessions/:id/ingredients` 세션 재료 불러오기 등)를 제시하며 FridgePage 개편을
+  요청했다. 참고 코드가 이번 아키텍처와 맞지 않는 부분(로컬스토리지, 세션 재료 불러오기
+  API 부재 등)은 확인 질문을 거쳤고, 자유 등록은 사용자가 명시적으로 "확정"을 선택했다.
+  세션 재료 불러오기는 이번 범위에서 제외하고 별도 백로그(BL-16)로만 등록한다.
+  1. **카테고리/단위는 사용자 입력이 아니다**: 참고 코드는 카테고리 버튼 선택 UI를 뒀지만,
+     실제 카테고리 taxonomy가 아직 4개(채소/축산물/가공식품/육류)뿐이고 출처가 미정이라
+     (DL-006 Open) 사용자가 임의 카테고리를 만들게 하면 taxonomy가 파편화된다. 대신
+     `POST /api/v1/ingredients`는 `{ name }`만 받고, category/unit은 서버가 Gemini로
+     정한다 — 프롬프트에 현재 DB의 distinct category 목록을 넣어 그 안에서만 고르게
+     한다(`ingredient_repo.list_categories`).
+  2. **식용 검증**: `app/prompts/ingredient_validation_v1.txt` + `GeminiIngredientValidation`
+     Pydantic 스키마(`is_edible`, `category`, `unit`, `reason`, CLAUDE.md 규칙 8)로 Gemini
+     구조화 출력을 검증한다. `is_edible: false`면 `400 invalid_request`.
+  3. **Gemini 장애 시 fail-closed**: `/recommendations`(DL-009)는 Gemini 실패 시 DB 결과로
+     폴백하지만, 이 엔드포인트는 폴백할 안전한 기본값이 없다(재료 마스터에 잘못된 데이터가
+     영구히 남는 게 가용성보다 나쁘다고 판단). Gemini 호출 자체가 실패하면(타임아웃/네트워크
+     오류/응답 파싱 실패) 검증 없이 만들지 않고 새 에러 클래스
+     `ExternalServiceError`(503, `external_service_unavailable`)를 던진다(CLAUDE.md 규칙
+     9는 "전체 서비스 장애로 이어지지 않게"이지 "이 기능 자체가 항상 성공해야 함"은
+     아니므로, 다른 API는 영향받지 않는다는 원칙은 유지된다).
+  4. **`call_gemini` 일반화**: 기존 `integrations/gemini_client.call_gemini`가 레시피 배열
+     응답 스키마를 모듈 내부에 하드코딩하고 있어 재료 검증(단일 객체 스키마)에 재사용할 수
+     없었다. `response_schema` 파라미터로 일반화하고, 레시피 스키마는
+     `recommendation_service._RECIPE_RESPONSE_SCHEMA`로 호출부에 옮겼다.
+  5. **중복 등록 처리**: 이름 정규화(`normalize_ingredient_name`) 후 이미 있으면 새로
+     만들지 않고 기존 재료를 `200`으로 반환한다(멱등). 동시 요청 경쟁 상태는
+     `IntegrityError` 롤백 후 재조회하는 기존 패턴(DL-014/DL-018)을 그대로 따른다.
+- **영향**: `POST /api/v1/ingredients` 구현(`docs/api-contract.md` §2). `architecture.md`
+  §6 비목표에서 이 항목 제거. 프론트 `frontend/src/features/ingredient/api.ts`에
+  `createIngredient(name)` 추가(FridgePage UI에서의 실제 연결은 다음 라운드 — BL-14).
 
 ## DL-008 | 2026-07-31 | Decided | 분석 이벤트 수집 방식
 - **배경**: 자체 DB 저장만 사용할지, 외부 분석 도구(GA, Amplitude 등)를 병행할지 미정.
@@ -301,6 +333,40 @@
   프론트 타입에 description/servings/difficulty/tip을 추가해 백엔드 스키마(DL-017)와
   다시 맞췄다.
 
+## DL-022 | 2026-08-10 | Decided | 조리 시작/완료 기능(BL-09) 제거
+
+- **배경**: 레시피 상세 페이지의 "이 레시피로 요리 시작" 버튼이 실제로 무엇을 하는지
+  사용자가 물어서(타이머 같은 건지) 확인해보니, 화면에 경과 시간·카운트다운·알림 등
+  사용자가 체감하는 기능은 전혀 없고, `cook_sessions` 테이블에 `started_at`/`completed_at`
+  두 시각만 기록해 `recipe_start`/`recipe_complete` 이벤트의 `cook_session_id`로 쓰는
+  순수 분석(퍼널 트래킹)용 기능이었다(DL-015). 사용자가 이 설명을 듣고 불필요하다고
+  판단해 제거를 요청했다.
+- **결정**: 프론트 UI(`CookModeControls`)만 지우면 이 흐름 전체가 어차피 도달 불가능해지므로,
+  프론트/백엔드/DB까지 기능 전체를 제거한다. 단, `recipe_start`/`recipe_complete` 이벤트
+  "정의" 자체는 `docs/event-taxonomy.md`에 기록만 남기고 지우지 않는다(CLAUDE.md 규칙 7 —
+  이벤트명은 임의로 변경/삭제하지 않는다는 취지를 "현재 사용하지 않더라도 정의는 보존"으로
+  해석). 실제로 이 이벤트를 발생시키는 코드는 이제 없다.
+  1. **프론트**: `frontend/src/features/recipe/components/CookModeControls.tsx` 삭제,
+     `RecipeDetailPage.tsx`에서 사용 제거, `features/recipe/api.ts`의
+     `startCookSession`/`completeCookSession`, `features/recipe/types.ts`의
+     `CookSessionStart`/`CookSessionComplete` 삭제.
+  2. **백엔드**: `app/api/cook_sessions.py`, `app/services/cook_session_service.py`,
+     `app/schemas/cook_session.py`, `app/repositories/cook_session_repo.py`,
+     `app/models/cook_session.py` 삭제. `app/api/recipes.py`의
+     `POST /{recipe_id}/cook-sessions` 라우트 제거. `app/api/router.py`,
+     `app/models/__init__.py`에서 참조 제거.
+  3. **DB**: `cook_sessions` 테이블을 마이그레이션(`da37dca1713e_drop_cook_sessions_table`)으로
+     drop했다 — 모델을 지운 채 테이블만 남기면 나중에 누군가 `alembic revision
+     --autogenerate`를 돌릴 때 의도치 않게 이 테이블을 DROP하는 마이그레이션이 섞여 나올
+     위험이 있어(사용자에게 확인 후) 코드와 스키마를 함께 정리하는 쪽을 택했다.
+  4. **테스트**: `backend/tests/api/test_cook_sessions.py` 삭제.
+     `frontend/src/pages/RecipeDetailPage.test.tsx`에서 조리 시작/완료 관련 mock·assertion
+     제거(저장 흐름 테스트는 유지).
+- **영향**: `docs/api-contract.md` §7, `docs/backlog.md` BL-09, `architecture.md`의 데이터
+  모델 표/§3.x 조리 시작·완료 섹션을 "제거됨"으로 갱신. `docs/event-taxonomy.md`의
+  `cook_session_id` 관련 서술(DL-013 시절 프론트 임시방편 설명)도 더는 유효하지 않아
+  갱신했다.
+
 ---
 
 ## 결정 요청 요약 (다음 대화에서 확인 필요)
@@ -308,5 +374,4 @@
 | ID | 항목 | 상태 | 차단하는 백로그 |
 |---|---|---|---|
 | DL-006 | 재료 마스터 데이터의 실제 출처 | Open | 재료 시드 백로그(엑셀 교체) |
-| DL-007 | 재료 자유 등록 허용 여부 | Open | 재료 등록 API(`POST /ingredients`) |
 | DL-012 | DB 매칭 임계값·근접임박 가중치 튜닝 | Open | 없음(임시값으로 운영 가능) |

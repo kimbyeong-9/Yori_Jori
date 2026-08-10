@@ -65,7 +65,7 @@ recipe_save   또는   recipe_start → recipe_complete
 
 ## 구현 참고 (5단계)
 
-- `recipe_start`/`recipe_complete`의 `cook_session_id`는 백엔드에 `cook-sessions` 리소스가
-  없어(BL-09 미착수) 프론트(`CookModeControls`)가 `crypto.randomUUID()`로 생성해
-  `metadata.cook_session_id`로만 보낸다 (DL-013). 실제 "조리 세션" 레코드는 서버에 없고
-  이벤트 로그로만 재구성 가능하다.
+- `recipe_start`/`recipe_complete`는 BL-09(조리 시작/완료 UI, `cook-sessions` 백엔드
+  리소스)와 함께 구현했다가 2026-08-10에 기능 전체를 제거했다(DL-022 — 화면상 사용자
+  가치 없는 순수 분석 기록이라 불필요하다고 판단). 이벤트 이름 자체는 CLAUDE.md 규칙 7에
+  따라 이 문서에 정의만 남겨두지만, 현재 이 두 이벤트를 발생시키는 코드는 없다.

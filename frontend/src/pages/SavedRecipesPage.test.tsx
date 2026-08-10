@@ -23,7 +23,7 @@ describe('SavedRecipesPage', () => {
         <SavedRecipesPage />
       </MemoryRouter>,
     )
-    expect(await screen.findByText('저장한 레시피가 없어요')).toBeInTheDocument()
+    expect(await screen.findByText('아직 저장된 레시피가 없습니다.')).toBeInTheDocument()
   })
 
   it('목록을 보여주고 저장 해제가 동작한다', async () => {
@@ -45,5 +45,27 @@ describe('SavedRecipesPage', () => {
     await user.click(screen.getByRole('button', { name: '저장 해제' }))
     await waitFor(() => expect(unsaveRecipe).toHaveBeenCalledWith('session-1', 'r-1'))
     await waitFor(() => expect(screen.queryByText('계란볶음밥')).not.toBeInTheDocument())
+  })
+
+  it('저장한 레시피가 7개 이상이면 페이지네이션을 보여주고 2페이지로 넘어간다', async () => {
+    const makeItem = (n: number) => ({
+      id: `sr-${n}`,
+      recipe: { id: `r-${n}`, title: `레시피${n}`, cooking_time_min: 10 },
+      created_at: `2026-08-0${(n % 9) + 1}T00:00:00Z`,
+    })
+    listSavedRecipes.mockResolvedValue(Array.from({ length: 7 }, (_, i) => makeItem(i + 1)))
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <SavedRecipesPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('레시피1')).toBeInTheDocument()
+    expect(screen.queryByText('레시피7')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '2' }))
+    expect(await screen.findByText('레시피7')).toBeInTheDocument()
+    expect(screen.queryByText('레시피1')).not.toBeInTheDocument()
   })
 })

@@ -10,15 +10,8 @@ vi.mock('../context/SessionContext', () => ({
 vi.mock('../features/analytics/track', () => ({ trackEvent: vi.fn() }))
 
 const getRecipe = vi.fn()
-const startCookSession = vi.fn().mockResolvedValue({
-  cook_session_id: 'cook-1',
-  started_at: '2026-08-04T00:00:00Z',
-})
-const completeCookSession = vi.fn().mockResolvedValue({ completed_at: '2026-08-04T00:10:00Z' })
 vi.mock('../features/recipe/api', () => ({
   getRecipe: (...args: unknown[]) => getRecipe(...args),
-  startCookSession: (...args: unknown[]) => startCookSession(...args),
-  completeCookSession: (...args: unknown[]) => completeCookSession(...args),
 }))
 
 vi.mock('../features/fridge/api', () => ({
@@ -83,7 +76,7 @@ function renderPage() {
 }
 
 describe('RecipeDetailPage', () => {
-  it('재료 보유/부족을 구분해 보여주고, 저장·조리 시작·완료 흐름이 동작한다', async () => {
+  it('재료 보유/부족을 구분해 보여주고, 저장이 동작한다', async () => {
     getRecipe.mockResolvedValue(sampleRecipe)
     const user = userEvent.setup()
     renderPage()
@@ -101,16 +94,6 @@ describe('RecipeDetailPage', () => {
     await user.click(screen.getByRole('button', { name: '저장' }))
     await waitFor(() => expect(saveRecipe).toHaveBeenCalledWith('session-1', 'r-1'))
     expect(await screen.findByRole('button', { name: '저장 해제' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '이 레시피로 요리 시작' }))
-    await waitFor(() => expect(startCookSession).toHaveBeenCalledWith('session-1', 'r-1'))
-    expect(await screen.findByRole('button', { name: '요리 완료' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '요리 완료' }))
-    await waitFor(() =>
-      expect(completeCookSession).toHaveBeenCalledWith('session-1', 'cook-1'),
-    )
-    expect(await screen.findByText(/조리를 완료했어요/)).toBeInTheDocument()
   })
 
   it('AI 생성 레시피면 안전 유의사항 안내문을 보여준다', async () => {

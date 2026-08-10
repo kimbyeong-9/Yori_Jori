@@ -29,13 +29,3 @@ export interface RecipeSummary {
   title: string
   cooking_time_min: number
 }
-
-// docs/api-contract.md §7 /recipes/{id}/cook-sessions, /cook-sessions/{id}/complete
-export interface CookSessionStart {
-  cook_session_id: string
-  started_at: string
-}
-
-export interface CookSessionComplete {
-  completed_at: string
-}
