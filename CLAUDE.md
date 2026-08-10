@@ -133,8 +133,8 @@ cd frontend
 # 의존성 설치
 npm install
 
-# 개발 서버 (백엔드가 :8000에서 떠 있어야 한다 — vite.config.ts가 /api를 프록시한다.
-# 백엔드에 CORS 미들웨어는 추가하지 않았다)
+# 개발 서버 (백엔드가 :8000에서 떠 있어야 한다 — vite.config.ts가 /api를 프록시해
+# 로컬에서는 동일 출처처럼 동작한다. 배포 환경에서만 CORS 미들웨어가 실제로 쓰인다)
 npm run dev
 
 # 빌드 (tsc + vite build)
@@ -143,3 +143,23 @@ npm run build
 # 테스트 (Vitest + React Testing Library, 네트워크는 각 feature api.ts를 vi.mock으로 대체)
 npm run test
 ```
+
+## 배포
+
+프론트(Vercel) + 백엔드(Render) + DB(Neon, 아직 미연결)로 나눠서 배포한다. Vercel
+서버리스는 Gemini 호출(최대 25초+재시도)이 Hobby 플랜 함수 타임아웃(10초)을 넘겨
+백엔드로는 안 맞는다고 판단해 상시 프로세스가 가능한 Render를 택했다.
+
+- **백엔드(Render)**: 저장소 루트의 `render.yaml`(Blueprint)로 배포한다. `rootDir:
+  backend`, 빌드 `pip install uv && uv sync --frozen --no-dev`, 실행
+  `uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`. `DATABASE_URL`/
+  `GEMINI_API_KEY`는 대시보드에서 직접 입력(`sync: false`), `CORS_ORIGINS`는 배포된
+  프론트 도메인으로 미리 채워뒀다.
+- **프론트(Vercel)**: 이미 배포됨(`https://yori-jori-psi.vercel.app`). 백엔드 URL이
+  정해지면 Vercel 프로젝트 환경변수에 `VITE_API_BASE_URL`(예:
+  `https://yorijori-backend.onrender.com`)을 추가하고 재배포해야 실제로 API를 호출한다
+  (`frontend/src/lib/apiClient.ts` 참조) — 이 값이 없으면 로컬 프록시를 가정한 상대
+  경로만 쓰기 때문에 배포 환경에서는 API 호출이 전부 실패한다.
+- **DB(Neon)**: 아직 연결 전. 연결 후에는 Render 환경변수에 `DATABASE_URL`을 넣고,
+  `uv run alembic upgrade head`를 한 번 수동 실행(Render 셸 또는 배포 커맨드에 추가)해
+  스키마를 올려야 한다.

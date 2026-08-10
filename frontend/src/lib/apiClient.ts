@@ -1,7 +1,10 @@
 import axios from 'axios'
 
-// Vite 개발 서버가 /api -> http://localhost:8000 로 프록시한다 (vite.config.ts).
-// 백엔드에는 CORS를 추가하지 않는다.
-export const apiClient = axios.create({
-  baseURL: '/api/v1',
-})
+// 로컬 개발은 Vite 프록시가 /api -> http://localhost:8000 로 넘겨줘 상대 경로만으로
+// 충분하다(vite.config.ts). 배포 환경(Vercel)은 프록시가 없어 백엔드(Render) 절대
+// URL이 필요하다 — VITE_API_BASE_URL이 있으면 그걸 쓰고, 없으면 로컬 동작을 그대로 둔다.
+const baseURL = import.meta.env.VITE_API_BASE_URL
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1`
+  : '/api/v1'
+
+export const apiClient = axios.create({ baseURL })

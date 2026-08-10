@@ -18,5 +18,14 @@ class Settings(BaseSettings):
     gemini_timeout_seconds: float = 25.0
     gemini_api_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
 
+    # 배포 시 프론트(Vercel)와 백엔드(Render)가 다른 도메인이라 CORS가 필요하다(로컬은
+    # vite.config.ts의 프록시로 동일 출처처럼 동작해 필요 없었음). 콤마로 여러 origin을
+    # 구분한다.
+    cors_origins: str = "http://localhost:5173"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
 
 settings = Settings()

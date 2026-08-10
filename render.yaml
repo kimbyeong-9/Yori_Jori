@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: yorijori-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install uv && uv sync --frozen --no-dev
+    startCommand: uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-flash-latest
+      - key: GEMINI_TIMEOUT_SECONDS
+        value: "25"
+      - key: CORS_ORIGINS
+        value: https://yori-jori-psi.vercel.app
