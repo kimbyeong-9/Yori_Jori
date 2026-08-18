@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="요리조리 API",
+    title="리쿡 API",
     description=(
         "냉장고 재료 기반 레시피 추천 서비스의 백엔드 API. "
         "세션/재료/냉장고/레시피 조회/저장/이벤트와 DB 우선 + Gemini 폴백 추천"

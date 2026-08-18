@@ -6,12 +6,12 @@
 @import '@fontsource/prompt/500.css';
 @import '@fontsource/prompt/600.css';
 
-/* 디자인 토큰 (5단계 지시사항) */
+/* 디자인 토큰 — 리쿡 리브랜딩(2026-08) 3색: 다크 브라운/스카이 블루/크림 옐로 */
 @theme {
   --color-brand-background: #fafafa;
-  --color-brand-primary: #7a0000;
-  --color-brand-secondary: #99cffe;
-  --color-brand-accent: #fefa99;
+  --color-brand-primary: #43302e;
+  --color-brand-secondary: #c1dbe8;
+  --color-brand-accent: #fff1b5;
   --color-brand-text: #222222;
   /* BL-13 홈페이지 개편에서 추가 — 참고 디자인의 보조 텍스트 색. */
   --color-brand-text-sub: #78716c;

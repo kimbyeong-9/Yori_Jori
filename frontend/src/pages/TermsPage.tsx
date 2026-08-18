@@ -8,7 +8,7 @@ export function TermsPage() {
       <section>
         <h2 className="mb-2 text-[15px] font-bold text-brand-text">제1조 (목적)</h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
-          이 약관은 요리조리(이하 "회사")가 제공하는 AI 레시피 추천 서비스(이하 "서비스")를 이용함에 있어
+          이 약관은 리쿡(이하 "회사")가 제공하는 AI 레시피 추천 서비스(이하 "서비스")를 이용함에 있어
           회사와 이용자의 권리, 의무 및 책임사항을 규정함을 목적으로 합니다.
         </p>
       </section>

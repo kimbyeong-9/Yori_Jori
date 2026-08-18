@@ -5,10 +5,10 @@ export function HelpPage() {
     <StaticPageLayout title="도움말 (FAQ)">
       <section>
         <h2 className="mb-3 text-lg font-bold text-brand-primary">
-          1. 요리조리(YoriJori)는 어떤 서비스인가요?
+          1. 리쿡(ReCook)은 어떤 서비스인가요?
         </h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
-          요리조리는 냉장고에 남은 식재료를 기반으로 최적의 레시피를 AI가 추천해주는 큐레이션
+          리쿡은 냉장고에 남은 식재료를 기반으로 최적의 레시피를 AI가 추천해주는 큐레이션
           서비스입니다. 사용자가 식재료를 입력하면, AI가 조합 가능한 요리를 분석하고 레시피를
           생성하여 제안합니다.
         </p>

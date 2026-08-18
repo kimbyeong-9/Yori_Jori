@@ -4,7 +4,7 @@ export function SafetyPage() {
   return (
     <StaticPageLayout title="안전 안내">
       <div className="mb-2 rounded-xl bg-brand-accent p-4 text-center text-sm font-semibold text-brand-primary">
-        요리조리의 AI 레시피를 이용하시기 전, 아래의 안전 수칙을 반드시 확인해 주시기 바랍니다.
+        리쿡의 AI 레시피를 이용하시기 전, 아래의 안전 수칙을 반드시 확인해 주시기 바랍니다.
       </div>
 
       <section>

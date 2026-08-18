@@ -8,7 +8,7 @@ export function PrivacyPage() {
       <section>
         <h2 className="mb-2 text-[15px] font-bold text-brand-text">1. 개인정보의 수집 항목 및 방법</h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
-          요리조리는 회원가입 절차가 없는 익명 기반 서비스입니다. 따라서 이용자의 성명, 연락처,
+          리쿡은 회원가입 절차가 없는 익명 기반 서비스입니다. 따라서 이용자의 성명, 연락처,
           이메일 등의 <strong>식별이 가능한 민감 개인정보를 일체 수집하거나 보관하지 않습니다.</strong>
           <br />
           <br />
@@ -25,7 +25,7 @@ export function PrivacyPage() {
       <section>
         <h2 className="mb-2 text-[15px] font-bold text-brand-text">2. 수집된 정보의 이용 목적</h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
-          요리조리는 위 수집된 비식별 활동 로그를 다음의 목적을 위해서만 이용합니다.
+          리쿡은 위 수집된 비식별 활동 로그를 다음의 목적을 위해서만 이용합니다.
           <br />
           - 서비스 경험 고도화: 맞춤형 레시피 추천 AI 프롬프트 개선
           <br />
@@ -46,7 +46,7 @@ export function PrivacyPage() {
         <h2 className="mb-2 text-[15px] font-bold text-brand-text">4. 개인정보 보호 담당자 안내</h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
           본 서비스는 무기명 기반이므로 개인정보 열람 및 정정 절차는 제공되지 않습니다. 그러나 서비스
-          이용과 관련하여 개인정보 처리에 관한 문의가 있으실 경우, 고객센터(support@yorijori.co.kr)로
+          이용과 관련하여 개인정보 처리에 관한 문의가 있으실 경우, 고객센터(support@recook.co.kr)로
           연락 주시면 신속하게 답변해 드리겠습니다.
         </p>
       </section>

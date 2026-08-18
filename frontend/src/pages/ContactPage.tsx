@@ -4,7 +4,7 @@ export function ContactPage() {
   return (
     <StaticPageLayout title="문의하기">
       <p className="mb-2 text-center text-sm leading-relaxed text-brand-text-sub">
-        요리조리 서비스 이용에 불편함이 있으시거나, 제휴 및 기타 문의가 있으신 경우
+        리쿡 서비스 이용에 불편함이 있으시거나, 제휴 및 기타 문의가 있으신 경우
         <br />
         언제든지 고객센터로 연락 주시기 바랍니다.
       </p>
@@ -13,7 +13,7 @@ export function ContactPage() {
         <div className="flex flex-col items-center rounded-xl border border-brand-text/10 bg-brand-background p-6">
           <LinkedEmailIcon />
           <h3 className="mb-1 text-lg font-bold text-brand-text">이메일 문의</h3>
-          <p className="text-sm text-brand-text-sub">support@yorijori.co.kr</p>
+          <p className="text-sm text-brand-text-sub">support@recook.co.kr</p>
           <p className="mt-2 text-xs text-brand-text-sub">평일 10:00 - 18:00 (주말 및 공휴일 휴무)</p>
         </div>
 

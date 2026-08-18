@@ -4,7 +4,7 @@ export function CookiePage() {
   return (
     <StaticPageLayout title="쿠키 정책 (Cookie Policy)">
       <p className="mb-4 text-center text-sm leading-relaxed text-brand-text-sub">
-        요리조리(YoriJori)는 이용자에게 연속적이고 원활한 서비스를 제공하기 위해 <br />
+        리쿡(ReCook)은 이용자에게 연속적이고 원활한 서비스를 제공하기 위해 <br />
         브라우저의 쿠키(Cookie) 및 로컬 스토리지(Local Storage)를 운용합니다.
       </p>
 
@@ -12,7 +12,7 @@ export function CookiePage() {
         <h2 className="mb-2 text-[15px] font-bold text-brand-text">1. 쿠키 및 로컬스토리지의 정의</h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
           쿠키와 로컬 스토리지는 웹사이트가 이용자의 브라우저 또는 기기에 저장하는 작은 텍스트 데이터
-          파일입니다. 요리조리는 회원가입 절차가 없으므로, 이 기술들을 활용하여 이용자를 식별하고
+          파일입니다. 리쿡은 회원가입 절차가 없으므로, 이 기술들을 활용하여 이용자를 식별하고
           서비스 이용 기록을 보장합니다.
         </p>
       </section>
@@ -20,7 +20,7 @@ export function CookiePage() {
       <section>
         <h2 className="mb-2 text-[15px] font-bold text-brand-text">2. 저장 및 사용되는 정보</h2>
         <p className="text-sm leading-relaxed text-brand-text-sub">
-          요리조리에서 사용하는 브라우저 저장 정보는 다음과 같습니다.
+          리쿡에서 사용하는 브라우저 저장 정보는 다음과 같습니다.
           <br />
           <br />
           <strong>- Browser UUID (`browser_uuid`):</strong> 기기를 고유하게 식별하기 위한 무작위

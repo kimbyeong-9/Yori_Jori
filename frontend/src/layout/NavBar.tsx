@@ -14,12 +14,8 @@ export function NavBar() {
   return (
     <nav className="fixed top-0 left-0 z-50 h-[60px] w-full border-b border-brand-text/10 bg-white/90 shadow-sm backdrop-blur-[6px] md:h-[77px]">
       <div className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-4 md:px-8">
-        <Link to="/" className="flex-shrink-0">
-          <img
-            src="/images/yorijori.png"
-            alt="요리조리 로고"
-            className="h-10 w-auto object-contain md:h-14"
-          />
+        <Link to="/" className="flex-shrink-0" aria-label="리쿡 홈으로 이동">
+          <img src="/images/logo.png" alt="리쿡 로고" className="h-9 w-auto object-contain md:h-12" />
         </Link>
 
         <div className="hidden items-center gap-8 text-[15px] font-medium text-brand-text md:flex">

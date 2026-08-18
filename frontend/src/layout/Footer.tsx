@@ -21,17 +21,13 @@ export function Footer() {
         <div className="mb-8 flex flex-col gap-8 md:flex-row md:gap-10">
           <div className="max-w-xs flex-shrink-0">
             <div className="mb-2">
-              <img
-                src="/images/yorijori.png"
-                alt="요리조리 로고"
-                className="h-12 w-auto object-contain"
-              />
+              <img src="/images/logo.png" alt="리쿡 로고" className="h-11 w-auto object-contain" />
             </div>
             <p className="mb-2 text-sm font-semibold text-brand-text">
               Better cooking, simplified
             </p>
             <p className="break-keep text-xs leading-relaxed text-brand-text-sub">
-              냉장고 속 재료로 오늘 뭐 먹을지 고민될 때, 요리조리가 딱 맞는 레시피를 찾아드립니다.
+              냉장고 속 재료로 오늘 뭐 먹을지 고민될 때, 리쿡이 딱 맞는 레시피를 찾아드립니다.
             </p>
             <button
               onClick={handleShare}
@@ -136,7 +132,7 @@ export function Footer() {
 
         <div className="border-t border-brand-text/10 pt-4">
           <p className="break-keep text-xs text-brand-text-sub">
-            © 2026 Yorijori Culinary Curator. All rights reserved. v0.1.0
+            © 2026 ReCook Culinary Curator. All rights reserved. v0.1.0
           </p>
         </div>
       </div>

@@ -263,6 +263,26 @@
   `frontend/src/pages/StaticPages.test.tsx`(6개 페이지 제목 렌더링 확인). CLAUDE.md 페이지
   테이블에 6개 경로 추가.
 
+## BL-21. 리브랜딩 — 색상 3종 + 서비스명 변경(요리조리 → 리쿡)
+- **목적**: 사용자가 확정한 대표색 3종(`#FFF1B5`/`#C1DBE8`/`#43302E`)과 새 서비스명
+  "리쿡(ReCook)"을 반영한다.
+- **범위**: `frontend/src/index.css`의 `--color-brand-primary/secondary/accent` 3개
+  토큰 교체(`#43302E`/`#C1DBE8`/`#FFF1B5` — 어둡고 채도 있는 브라운을 기존 레드와 같은
+  primary 역할로, 나머지 둘은 기존 secondary/accent 밝기·역할에 맞춰 매핑). 서비스명
+  "요리조리"/"YoriJori" 문자열을 프론트 전체(NavBar/Footer/약관·고객지원 6페이지/
+  `index.html` 타이틀)와 백엔드 FastAPI 타이틀에서 "리쿡"/"ReCook"으로 교체.
+- **의사결정**: 로고 이미지(`/images/yorijori.png`)가 애초에 존재하지 않는 파일이라(깨진
+  이미지, alt 텍스트만 보이던 상태) 실제 그래픽 로고 파일은 만들지 못하고, 대신
+  `frontend/src/components/Logo.tsx`라는 텍스트 워드마크 컴포넌트를 새로 만들어 NavBar/
+  Footer에서 공용으로 쓰게 했다. localStorage 키(`yorijori:session_id` 등), Render/Vercel/
+  Neon 배포 리소스 이름, GitHub 저장소명/로컬 폴더명은 URL 파손·세션 유실 위험이 있는
+  인프라 변경이라 이번 범위에서 제외했다(CLAUDE.md에 명시).
+- **완료 조건**: 실제 빌드 산출물(`dist/assets/*.css`, `*.js`)에 3개 hex 값과 "리쿡"
+  문자열이 반영되고 "요리조리" 문자열이 남지 않음
+- **진행 상태(2026-08-18)**: **완료**. `tsc`/`oxlint`/`vitest`(44 passed)/`build` 모두
+  이상 없음, 백엔드 `pytest` 61 passed. 빌드 산출물 직접 grep으로 색상/문자열 반영 확인
+  (Playwright 브라우저가 이번 세션 환경에 없어 시각적 스크린샷 검증은 생략).
+
 ## 백로그 외 (별도 트랙, 이번 목록에 포함하지 않음)
 - 배포/인프라, CI/CD 구성
 - 성능/부하 테스트
