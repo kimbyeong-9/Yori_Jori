@@ -66,6 +66,11 @@ async def call_gemini(
         "generationConfig": {
             "responseMimeType": "application/json",
             "responseSchema": response_schema,
+            # 3.x세대 모델은 기본으로 "thinking"이 켜져 있어 구조화 출력 요청이
+            # 극도로 느려지거나(40초+) 503(high demand)이 잦아진다(2026-08-18 실측).
+            # 우리 용도는 정해진 스키마로 바로 뽑아내는 것뿐이라 thinking이 필요
+            # 없어 0으로 꺼서 지연을 줄인다.
+            "thinkingConfig": {"thinkingBudget": 0},
         },
     }
 

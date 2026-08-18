@@ -367,6 +367,38 @@
   `cook_session_id` 관련 서술(DL-013 시절 프론트 임시방편 설명)도 더는 유효하지 않아
   갱신했다.
 
+## DL-023 | 2026-08-18 | Decided(버그 수정) | Gemini 구조화 출력이 지속적으로 503/타임아웃 — 모델 교체 + thinking 비활성화
+
+- **배경**: 배포된 서비스에서 레시피 검색이 항상 "해당 식재료로 레시피를 제작할 수
+  없습니다"만 반환한다는 사용자 보고로 조사. `gemini-flash-latest`(당시 기본 모델)로
+  구조화 출력(`responseSchema`) 요청을 보내면 1시간 넘게 지속적으로 `503 UNAVAILABLE
+  (high demand)`가 발생했다(단순 텍스트 요청은 정상). Gemini 실패 시 DB로 폴백하는
+  기존 설계(CLAUDE.md 규칙 9)는 정상 동작했지만, 로컬/프로덕션(Neon) DB 모두 레시피가
+  1건뿐이라 대부분의 재료 조합에서 폴백 결과도 비어 사실상 기능이 죽어 있었다.
+- **원인**: `GET /v1beta/models`로 확인해보니 `gemini-2.5-flash`는 신규 사용자에게
+  더 이상 제공되지 않고(404), 최신 세대 모델(`gemini-3.x`)은 기본으로 "thinking"이
+  켜져 있어 구조화 출력처럼 무거운 요청에서 응답이 40초 이상 걸리거나 503이 잦았다.
+  `generationConfig.thinkingConfig.thinkingBudget: 0`으로 thinking을 끄니
+  `gemini-3.5-flash`가 15~25초 안에 안정적으로 성공했다(반복 재현 확인).
+- **결정**:
+  1. `GEMINI_MODEL` 기본값을 `gemini-flash-latest`(롤링 별칭) → `gemini-3.5-flash`
+     (고정 안정 버전)로 변경. `GEMINI_TIMEOUT_SECONDS`도 25 → 35로 상향(재시도 1회
+     포함 최악 약 70초).
+  2. `gemini_client.call_gemini`가 보내는 모든 요청의 `generationConfig`에
+     `thinkingConfig: {thinkingBudget: 0}`을 추가 — 이 서비스는 정해진 스키마로 바로
+     뽑아내는 용도라 thinking(탐색적 추론)이 필요 없다.
+  3. Gemini 장애 시 폴백 결과가 비지 않도록 `app/seed/seed_recipes.py`를 레시피 1건
+     하드코딩에서 **레시피 10건 목록(`RECIPE_SEEDS`) + 공용 idempotent 시딩 함수**로
+     확장했다. 시드 재료 10개 조합을 골고루 커버해, 흔한 재료 조합은 Gemini 없이도
+     DB만으로 3건 이상 매칭되어 즉시 응답한다(실측: "돼지고기+김치" → DB만으로 0.02초
+     만에 3건).
+  4. `render.yaml`의 `GEMINI_MODEL`/`GEMINI_TIMEOUT_SECONDS` 하드코딩 값과 로컬
+     `backend/.env`도 함께 갱신(코드 기본값만으론 Render의 명시적 env var를 못 덮음).
+- **영향**: `backend/app/core/config.py`, `backend/app/integrations/gemini_client.py`,
+  `backend/app/seed/seed_recipes.py`, `backend/app/seed/run_seed.py`, `render.yaml`,
+  `backend/.env.example`. DB/API 계약 변경 없음(마이그레이션 불필요). 기존 pytest
+  61건 그대로 통과.
+
 ---
 
 ## 결정 요청 요약 (다음 대화에서 확인 필요)

@@ -16,8 +16,8 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-flash-latest
+        value: gemini-3.5-flash
       - key: GEMINI_TIMEOUT_SECONDS
-        value: "25"
+        value: "35"
       - key: CORS_ORIGINS
         value: https://yori-jori-psi.vercel.app
