@@ -150,20 +150,26 @@ npm run test
 
 ## 배포
 
-프론트(Vercel) + 백엔드(Render) + DB(Neon, 아직 미연결)로 나눠서 배포한다. Vercel
-서버리스는 Gemini 호출(최대 25초+재시도)이 Hobby 플랜 함수 타임아웃(10초)을 넘겨
-백엔드로는 안 맞는다고 판단해 상시 프로세스가 가능한 Render를 택했다.
+프론트(Vercel) + 백엔드(Render) + DB(Neon)로 나눠서 배포한다(2026-08-11 Neon 연결
+완료, 셋 다 무료 플랜으로 상시 운영 중). Vercel 서버리스는 Gemini 호출이 Hobby 플랜
+함수 타임아웃(10초)을 넘겨 백엔드로는 안 맞는다고 판단해 상시 프로세스가 가능한
+Render를 택했다.
 
 - **백엔드(Render)**: 저장소 루트의 `render.yaml`(Blueprint)로 배포한다. `rootDir:
-  backend`, 빌드 `pip install uv && uv sync --frozen --no-dev`, 실행
-  `uv run uvicorn app.main:app --host 0.0.0.0 --port $PORT`. `DATABASE_URL`/
-  `GEMINI_API_KEY`는 대시보드에서 직접 입력(`sync: false`), `CORS_ORIGINS`는 배포된
-  프론트 도메인으로 미리 채워뒀다.
-- **프론트(Vercel)**: 이미 배포됨(`https://yori-jori-psi.vercel.app`). 백엔드 URL이
-  정해지면 Vercel 프로젝트 환경변수에 `VITE_API_BASE_URL`(예:
-  `https://yorijori-backend.onrender.com`)을 추가하고 재배포해야 실제로 API를 호출한다
-  (`frontend/src/lib/apiClient.ts` 참조) — 이 값이 없으면 로컬 프록시를 가정한 상대
-  경로만 쓰기 때문에 배포 환경에서는 API 호출이 전부 실패한다.
-- **DB(Neon)**: 아직 연결 전. 연결 후에는 Render 환경변수에 `DATABASE_URL`을 넣고,
-  `uv run alembic upgrade head`를 한 번 수동 실행(Render 셸 또는 배포 커맨드에 추가)해
-  스키마를 올려야 한다.
+  backend`, 빌드 시 `uv sync` 후 `alembic upgrade head` + `run_seed`까지 자동
+  실행(둘 다 idempotent), 실행 `uv run uvicorn app.main:app --host 0.0.0.0 --port
+  $PORT`. `DATABASE_URL`/`GEMINI_API_KEY`는 대시보드 Environment 탭에서 직접
+  입력(`sync: false`) — **복붙 시 앞뒤 공백/줄바꿈이 섞이면 Gemini가 403으로 조용히
+  실패**하니 붙여넣은 뒤 꼭 재확인한다(2026-08-18 실제로 이 문제로 장애 발생, DL-023).
+  `GEMINI_MODEL`/`GEMINI_TIMEOUT_SECONDS`/`CORS_ORIGINS`는 `render.yaml`에 값이
+  고정되어 있어 코드 기본값과 별개로 이 파일도 같이 갱신해야 한다.
+- **프론트(Vercel)**: `https://yori-jori-psi.vercel.app`. 환경변수
+  `VITE_API_BASE_URL=https://yorijori-backend.onrender.com` 설정됨(없으면 로컬
+  프록시를 가정한 상대 경로만 써서 배포 환경에서 API 호출이 전부 실패,
+  `frontend/src/lib/apiClient.ts` 참조). `frontend/vercel.json`의 SPA rewrite(모든
+  경로를 `index.html`로) 없으면 `/recipes`처럼 React Router가 처리하는 경로를 새로고침
+  하거나 직접 접속할 때 Vercel이 자체 404를 반환한다(2026-08-18 실제 발생, 원인
+  파악에 시간 걸림 — 재발 시 이 항목부터 의심할 것).
+- **DB(Neon)**: 연결 완료. 재료 10개 + 레시피 10개 시드됨. 비밀번호를 바꾸면(재발급)
+  Render `DATABASE_URL`도 즉시 같이 갱신해야 한다(안 그러면 스키마는 그대로인데
+  인증만 깨짐).
