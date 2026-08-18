@@ -314,7 +314,9 @@ async def _get_or_create_gemini_recipes(
             response_schema=_RECIPE_RESPONSE_SCHEMA,
             timeout_seconds=settings.gemini_timeout_seconds,
         )
-    except (GeminiTimeoutError, GeminiRequestError, GeminiInvalidResponseError):
+    except (GeminiTimeoutError, GeminiRequestError, GeminiInvalidResponseError) as exc:
+        # api_key는 절대 포함하지 않는 예외 메시지만 남긴다(CLAUDE.md 규칙 9).
+        print(f"[gemini] 레시피 생성 호출 실패: {type(exc).__name__}: {exc}", flush=True)
         return None
 
     try:

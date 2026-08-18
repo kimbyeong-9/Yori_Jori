@@ -82,6 +82,8 @@ async def create_ingredient(
             timeout_seconds=settings.gemini_timeout_seconds,
         )
     except (GeminiTimeoutError, GeminiRequestError, GeminiInvalidResponseError) as exc:
+        # api_key는 절대 포함하지 않는 예외 메시지만 남긴다(CLAUDE.md 규칙 9).
+        print(f"[gemini] 재료 검증 호출 실패: {type(exc).__name__}: {exc}", flush=True)
         raise ExternalServiceError(_UNAVAILABLE_MESSAGE) from exc
 
     try:
