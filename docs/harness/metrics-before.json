@@ -1,0 +1,86 @@
+{
+  "mode": "baseline",
+  "measured_at": "2026-09-16T16:28:00+09:00",
+  "commit": "b327c60",
+  "note": "측정.md 항목5의 '완료_신호(40점)' 기준을 '굵은 글씨 안에서 완료가 맨 끝 글자로 끝날 때만 인정'으로 좁혀 **완료 조건** 같은 서식 라벨 오탐을 제거한 뒤 전체 baseline을 재측정. 측정 서브에이전트('측정')는 이번 세션에서 아직 등록되지 않아(신규 세션부터 인식) 오케스트레이터가 .claude/agents/측정.md 스펙대로 직접 실행했다.",
+  "results": {
+    "backend_tests": {
+      "command": "cd backend && TEST_DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:55432/yorijori_test uv run pytest --cov=app --cov-report=term-missing",
+      "status": "success",
+      "passed": 61,
+      "failed": 0,
+      "warnings": 1,
+      "duration_sec": 2.23,
+      "coverage_percent": 92,
+      "coverage_detail": "TOTAL 1321 stmts, 107 miss, 92% (가장 낮은 커버리지: app/seed/*.py 0%, app/integrations/gemini_client.py 66%)"
+    },
+    "frontend_tests": {
+      "command": "cd frontend && npm run test -- --run",
+      "status": "success",
+      "test_files_passed": 11,
+      "tests_passed": 44,
+      "tests_failed": 0,
+      "duration_sec": 2.95
+    },
+    "frontend_lint": {
+      "command": "cd frontend && npx oxlint",
+      "status": "success",
+      "errors": 0,
+      "warnings": 1,
+      "warning_detail": "src/context/SessionContext.tsx:72:17 react(only-export-components)"
+    },
+    "frontend_build": {
+      "command": "cd frontend && npm run build && du -sh dist",
+      "status": "success",
+      "dist_size": "2.8M",
+      "largest_asset": "PretendardVariable-*.woff2 (~2.06MB)",
+      "js_bundle_gzip": "110.09 kB",
+      "css_bundle_gzip": "7.68 kB"
+    },
+    "backlog_completion": {
+      "source": "docs/backlog.md",
+      "method": "각 '## BL-' 섹션을 100점 만점(파일경로 언급 없으면 90점 만점, 통과선 72점)으로 채점: (40) 굵은 글씨 문구가 '완료'로 끝나거나(예: **완료**, **구현 완료**; **완료 조건**처럼 뒤에 다른 단어가 붙으면 불인정) '반영됨'/'배포됨'/'통과'를 포함, (30) 미착수/보류/제거됨/TODO/예정/미해결 등 미완료 표현 없음, (20) '진행 상태(YYYY-MM-DD)' 형식의 구체 날짜 기록 존재, (10) 언급된 테스트/구현 파일 경로가 실제로 저장소에 존재. 100점(또는 90점) 만점 중 80점(또는 72점) 이상이면 '완료'.",
+      "status": "success",
+      "total_items": 22,
+      "done_items": 20,
+      "ratio_percent": 90.91,
+      "not_done_items": [
+        "BL-09 (조리 시작/완료 흐름 — 제거됨: 완료_신호 0 + 작업기록 20 = 20/90 → 부적합. 이전 채점 방식(단순 '완료' 포함 여부)에서는 '**완료 조건**' 라벨 때문에 완료_신호 40점을 잘못 받아 60/90이었으나, 이번 좁힌 규칙으로 오탐이 사라짐)",
+        "BL-16 (세션 재료 불러오기 — 미착수: 작업기록 20 = 20/90, 완료_신호·미완료_신호_없음 모두 0점 → 부적합)"
+      ],
+      "caveat": "이전 baseline에서 지적했던 '완료_신호(40점)' 오탐(모든 BL- 섹션에 공통으로 있는 '**완료 조건**' 서식 라벨 자체가 '완료' 글자를 포함해 실제 완료 여부와 무관하게 40점을 주던 문제, 특히 BL-09가 제거된 기능인데도 40점을 받던 문제)을 '굵은 글씨 문구가 완료로 끝날 때만 인정'하는 규칙으로 수정해 해소했다. BL-09는 이번 재측정에서 완료_신호 0점으로 정확히 걸러졌고(검증 완료), 다른 20개 항목은 실제 '**완료**' 단독 마킹을 갖고 있어 영향이 없어 전체 완료율은 이전과 동일하게 20/22(90.91%)로 유지된다. 별도로, BL-11(FridgeItemCard.tsx)과 BL-21(Logo.tsx)이 언급한 파일이 실제로는 존재하지 않는데(각각 BL-14 개편, 사유 미상으로 삭제/미생성 추정) 근거_파일_실존 기준에서 0점 처리됐고, 이는 문서(backlog.md)에 남은 오래된 파일 경로 언급이 실제 코드와 어긋난 것으로 보인다(총점에는 크게 영향 없어 최종 분류는 변하지 않음).",
+      "item_scores": [
+        {"id": "BL-00", "title": "프로젝트 스캐폴딩", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": null, "total": 90, "max": 90, "threshold": 72, "status": "완료"},
+        {"id": "BL-01", "title": "세션 식별 기초", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-02", "title": "이벤트 수집 인프라", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": null, "total": 90, "max": 90, "threshold": 72, "status": "완료"},
+        {"id": "BL-03", "title": "재료 마스터 데이터 및 조회 API", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": null, "total": 90, "max": 90, "threshold": 72, "status": "완료"},
+        {"id": "BL-04", "title": "IngredientAddPage — 재료 등록", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-05", "title": "FridgePage — 냉장고 목록/선택/신선도 변경", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-06", "title": "추천 요청 및 Gemini 연동 → RecipeListPage", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-07", "title": "RecipeDetailPage — 상세 조회", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-08", "title": "레시피 저장 → SavedRecipesPage", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-09", "title": "조리 시작/완료 흐름 — 제거됨", "완료_신호": 0, "미완료_신호_없음": 0, "작업_기록_존재": 20, "근거_파일_실존": null, "total": 20, "max": 90, "threshold": 72, "status": "부적합", "미완료_키워드": ["제거됨"]},
+        {"id": "BL-10", "title": "HomePage", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-11", "title": "냉장고 재료 기한 자동 삭제 + 임박 3시간 카운트다운", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 0, "total": 90, "max": 100, "threshold": 80, "status": "완료", "존재하지_않는_파일": ["frontend/src/features/fridge/components/FridgeItemCard.tsx"]},
+        {"id": "BL-12", "title": "RecipeDetailPage UI 개편 + 인분/난이도/한줄소개/팁", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-13", "title": "HomePage 개편 — 자유 재료명 검색 + 새 NavBar/Footer", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-14", "title": "FridgePage 개편 — 관리모드 토글 + 태그형 선택 UI", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-15", "title": "자유 재료 등록 — POST /api/v1/ingredients", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-16", "title": "세션 재료 불러오기 (미착수)", "완료_신호": 0, "미완료_신호_없음": 0, "작업_기록_존재": 20, "근거_파일_실존": null, "total": 20, "max": 90, "threshold": 72, "status": "부적합", "미완료_키워드": ["미착수"]},
+        {"id": "BL-17", "title": "RecipeListPage 개편 — 선택 식재료 칩 + 카드 그리드 리스타일", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-18", "title": "RecipeDetailPage 개편 — 비주얼 리스타일", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": null, "total": 90, "max": 90, "threshold": 72, "status": "완료"},
+        {"id": "BL-19", "title": "SavedRecipesPage 개편 — 카드 그리드 + 클라이언트 페이지네이션", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-20", "title": "약관/고객지원 정적 페이지 6종", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 10, "total": 100, "max": 100, "threshold": 80, "status": "완료"},
+        {"id": "BL-21", "title": "리브랜딩 — 색상 3종 + 서비스명 변경(요리조리 → 리쿡)", "완료_신호": 40, "미완료_신호_없음": 30, "작업_기록_존재": 20, "근거_파일_실존": 0, "total": 90, "max": 100, "threshold": 80, "status": "완료", "존재하지_않는_파일": ["frontend/src/components/Logo.tsx"]}
+      ]
+    },
+    "open_decisions": {
+      "source": "docs/decision-log.md",
+      "status": "success",
+      "open_count": 2,
+      "open_items": ["DL-006 (재료 마스터 데이터 실제 출처)", "DL-012 (DB 매칭 임계값·근접임박 가중치 튜닝)"]
+    }
+  },
+  "failed_item_count": 0,
+  "failed_items": []
+}
